@@ -4,6 +4,7 @@ import { Server, Room } from 'colyseus';
 import { schema, t } from '@colyseus/schema';
 import * as store from './store.mjs';
 import { mountApi, isTeacher } from './api.mjs';
+import { priceOf, cleanLook, FREE_ITEMS, VEHICLES, vehicleKey } from '../src/catalog.js';
 
 export const MAX_PLAYERS = 50;
 const CHAT_PRESETS = 12; // ต้องตรงกับฝั่งเกม src/chat.js
@@ -13,7 +14,11 @@ const REWARD_FIRST = 10, REWARD_RETRY = 5, BONUS_ALL = 100;
 const Player = schema({
   name: t.string(),
   x: t.int16(), y: t.int16(), z: t.int16(),
-  ry: t.uint8(), spd: t.uint8(), air: t.boolean(), look: t.uint8(),
+  ry: t.uint8(), spd: t.uint8(), air: t.boolean(),
+  skin: t.uint8(), hair: t.uint8(), hairColor: t.uint8(), outfit: t.uint8(), // หน้าตา (ดู src/catalog.js)
+  veh: t.uint8(),      // พาหนะที่ขี่อยู่ (0 = เดิน)
+  seat: t.string(),    // นั่งซ้อนท้ายใคร (sessionId ของคนขับ)
+  wallet: t.uint16(),  // เหรียญในกระเป๋า (ใช้ซื้อของ)
   solved: t.uint8(),   // ภารกิจที่ทำได้ในรอบนี้
   wrong: t.uint16(),   // ตอบผิดกี่ครั้ง
   coins: t.uint16(),   // เหรียญที่ได้ในรอบนี้
@@ -61,6 +66,7 @@ class SchoolRoom extends Room {
     this.teachers = new Set();
     this.meta = new Map(); // sessionId -> { studentCode, attempts:{qid:n}, solvedIds:Set }
     this.qstats = new Map(); // qid -> { right, wrong }
+    this.invites = new Map(); // ผู้ถูกชวน -> { from, at }
     this.idleSince = Date.now();
     this.ticks = 0;
     this.clock.setInterval(() => this.tick(), 1000);
@@ -87,13 +93,21 @@ class SchoolRoom extends Room {
 
     this.onMessage('move', (client, m) => {
       const p = player(client);
-      if (!p || !m) return;
+      if (!p || !m || p.seat) return; // คนซ้อนท้าย: ตำแหน่งตามคนขับ
       p.x = Math.round(num(m.x, -130, 130) * 10);
       p.y = Math.round(num(m.y, -5, 30) * 10);
       p.z = Math.round(num(m.z, -130, 130) * 10);
       p.ry = Math.round(((num(m.ry, -100, 100) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 255);
       p.spd = Math.round(num(m.spd, 0, 20) * 10);
       p.air = !!m.air;
+      // คนซ้อนเกาะไปกับคนขับ
+      this.state.players.forEach((q) => {
+        if (q.seat !== client.sessionId) return;
+        const ry = num(m.ry, -100, 100);
+        q.x = Math.round((num(m.x, -130, 130) - Math.sin(ry) * 0.85) * 10);
+        q.z = Math.round((num(m.z, -130, 130) - Math.cos(ry) * 0.85) * 10);
+        q.y = p.y; q.ry = p.ry; q.spd = p.spd; q.air = false;
+      });
     });
 
     // ผลการตอบ: เซิร์ฟเวอร์คิดเหรียญเอง (10 ครั้งแรก / 5 ครั้งถัดไป / โบนัสครบชุด)
@@ -108,15 +122,20 @@ class SchoolRoom extends Room {
       if (m.correct) {
         meta.solvedIds.add(q.id);
         p.solved = meta.solvedIds.size;
-        p.coins += n === 1 ? REWARD_FIRST : REWARD_RETRY;
-        if (meta.solvedIds.size >= this.bankData.questions.length) p.coins += BONUS_ALL;
+        const earn = (n === 1 ? REWARD_FIRST : REWARD_RETRY) + (meta.solvedIds.size >= this.bankData.questions.length ? BONUS_ALL : 0);
+        p.coins += earn;
+        p.wallet = Math.min(65535, p.wallet + earn);
         st.right++;
       } else { p.wrong++; st.wrong++; }
       this.qstats.set(q.id, st);
     });
 
     // ขอชุดคำถาม (ส่งซ้ำได้ กันข้อความแรกหลุดตอนเพิ่งเข้าห้อง)
-    this.onMessage('getBank', (client) => client.send('bank', { title: this.bankData.title, questions: this.bankData.questions }));
+    this.onMessage('getBank', (client) => {
+      client.send('bank', { title: this.bankData.title, questions: this.bankData.questions });
+      const p = player(client), meta = this.meta.get(client.sessionId);
+      if (p && meta) client.send('profile', { owned: meta.owned, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit }, lastVeh: meta.lastVeh || 0 });
+    });
 
     this.onMessage('chat', (client, m) => {
       const p = player(client);
@@ -127,6 +146,61 @@ class SchoolRoom extends Room {
       if (Number.isInteger(m?.p) && m.p >= 0 && m.p < CHAT_PRESETS) this.broadcast('chat', { id: client.sessionId, p: m.p });
       else if (Number.isInteger(m?.e) && m.e >= 0 && m.e < CHAT_EMOJIS) this.broadcast('chat', { id: client.sessionId, e: m.e });
     });
+
+    // ── ของสะสม ──
+    this.onMessage('look', (client, m) => {
+      const p = player(client), meta = this.meta.get(client.sessionId);
+      if (!p || !meta) return;
+      Object.assign(p, cleanLook(m, meta.owned));
+      this.saveProfile(client.sessionId);
+    });
+    this.onMessage('buy', (client, m) => {
+      const p = player(client), meta = this.meta.get(client.sessionId);
+      const key = String(m?.item || ''), price = priceOf(key);
+      if (!p || !meta || price === null) return;
+      if (meta.owned.includes(key)) return client.send('buyResult', { ok: false, msg: 'มีของชิ้นนี้แล้ว' });
+      if (p.wallet < price) return client.send('buyResult', { ok: false, msg: 'เหรียญไม่พอ' });
+      p.wallet -= price;
+      meta.owned.push(key);
+      this.saveProfile(client.sessionId);
+      client.send('profile', { owned: meta.owned });
+      client.send('buyResult', { ok: true, item: key });
+    });
+    this.onMessage('ride', (client, m) => {
+      const p = player(client), meta = this.meta.get(client.sessionId);
+      const id = Number(m?.veh) || 0;
+      if (!p || !meta || p.seat) return;
+      if (id && !meta.owned.includes(vehicleKey(id))) return;
+      if (id !== p.veh) this.releasePassenger(client.sessionId);
+      p.veh = VEHICLES.some((v) => v.id === id) ? id : 0;
+      meta.lastVeh = p.veh || meta.lastVeh || 0;
+    });
+    // ซ้อนท้าย: คนขับชวนคนที่อยู่ใกล้ที่สุด → อีกฝ่ายกดรับ
+    this.onMessage('invite', (client) => {
+      const d = player(client);
+      if (!d || d.veh !== 5 || this.passengerOf(client.sessionId)) return;
+      let best = null, bd = 40; // 4 เมตร (หน่วยเดซิเมตร)
+      this.state.players.forEach((q, id) => {
+        if (id === client.sessionId || q.veh || q.seat || !q.online) return;
+        const dist = Math.hypot(q.x - d.x, q.z - d.z);
+        if (dist < bd) { bd = dist; best = id; }
+      });
+      if (!best) return client.send('inviteResult', { ok: false, msg: 'ไม่มีเพื่อนอยู่ใกล้ ๆ (ภายใน 4 เมตร)' });
+      this.invites.set(best, { from: client.sessionId, at: Date.now() });
+      this.clients.find((x) => x.sessionId === best)?.send('invite', { from: client.sessionId, name: d.name });
+      client.send('inviteResult', { ok: true, msg: `ชวน ${this.state.players.get(best).name} แล้ว รอเพื่อนกดรับ` });
+    });
+    this.onMessage('accept', (client, m) => {
+      const inv = this.invites.get(client.sessionId);
+      this.invites.delete(client.sessionId);
+      const q = player(client), d = this.state.players.get(inv?.from);
+      if (!q || !d || !inv || inv.from !== m?.from || Date.now() - inv.at > 20000) return client.send('inviteResult', { ok: false, msg: 'คำชวนหมดเวลาแล้ว' });
+      if (d.veh !== 5 || this.passengerOf(inv.from) || Math.hypot(q.x - d.x, q.z - d.z) > 80) return client.send('inviteResult', { ok: false, msg: 'ขึ้นไม่ทันแล้ว ลองให้เพื่อนชวนใหม่' });
+      q.veh = 0;
+      q.seat = inv.from;
+      this.clients.find((x) => x.sessionId === inv.from)?.send('inviteResult', { ok: true, msg: `${q.name} ขึ้นซ้อนท้ายแล้ว 🚲` });
+    });
+    this.onMessage('unseat', (client) => { const q = player(client); if (q) q.seat = ''; });
 
     // ── คำสั่งครู ──
     this.onMessage('start', teacherOnly((c, m) => {
@@ -159,8 +233,25 @@ class SchoolRoom extends Room {
       const coins = num(Math.floor(m.coins), 1, 100);
       if (!p) return;
       p.coins += coins;
+      p.wallet = Math.min(65535, p.wallet + coins);
+      this.saveProfile(m.id);
       this.clients.find((x) => x.sessionId === m.id)?.send('bonus', { coins });
     }));
+  }
+
+  passengerOf(driverId) {
+    let found = null;
+    this.state.players.forEach((q, id) => { if (q.seat === driverId) found = id; });
+    return found;
+  }
+  releasePassenger(driverId) {
+    this.state.players.forEach((q) => { if (q.seat === driverId) q.seat = ''; });
+  }
+  /** บันทึกกระเป๋า/ของ/ชุด ของนักเรียนที่มีรหัส */
+  saveProfile(id) {
+    const p = this.state.players.get(id), meta = this.meta.get(id);
+    if (!p || !meta?.studentCode) return;
+    store.saveProfile(meta.studentCode, { coins: p.wallet, owned: meta.owned, equip: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit, veh: meta.lastVeh || 0 } });
   }
 
   endRound() {
@@ -172,7 +263,8 @@ class SchoolRoom extends Room {
     const questions = this.bankData.questions.map((q) => ({ id: q.id, q: q.q, topic: q.topic, ...(this.qstats.get(q.id) || { right: 0, wrong: 0 }) }));
     const resultId = store.saveResult({ code: this.roomId, bank: this.bankData.title, minutes: this.minutes, startedAt: this.startedAt, endedAt: Date.now(), players: players.map(({ id, ...r }) => r), questions });
     // เหรียญสะสมข้ามรอบสำหรับคนที่มีรหัสนักเรียน
-    store.updateStudents(players.filter((p) => p.code).map((p) => ({ code: p.code, coinsDelta: p.coins, solved: p.solved })));
+    store.updateStudents(players.filter((p) => p.code).map((p) => ({ code: p.code, solved: p.solved })));
+    this.state.players.forEach((p, id) => this.saveProfile(id));
     this.broadcast('results', { resultId, top: players.slice(0, 3).map((p) => ({ name: p.name, solved: p.solved, coins: p.coins })), ranks: players.map((p, i) => ({ id: p.id, rank: i + 1 })), total: players.length });
     console.log(`[${this.roomId}] จบรอบ · ${players.length} คน · บันทึก ${resultId}`);
   }
@@ -185,22 +277,28 @@ class SchoolRoom extends Room {
       return;
     }
     if (this.state.players.size >= MAX_PLAYERS) throw new Error('ห้องเต็มแล้ว');
-    let name = clean(options?.name), studentCode = null;
+    let name = clean(options?.name), studentCode = null, stu = null;
     if (options?.studentCode) {
       const s = store.findStudent(options.studentCode);
       if (!s) throw new Error('ไม่พบรหัสนักเรียนนี้');
       // รหัสเดียวกันเข้าซ้ำ: เตะตัวเก่าออก (เช่นเปลี่ยนเครื่อง)
       for (const [id, mt] of this.meta) if (mt.studentCode === s.code) { this.clients.find((x) => x.sessionId === id)?.leave(4101); this.removePlayer(id); }
-      name = s.name; studentCode = s.code;
+      name = s.name; studentCode = s.code; stu = s;
     }
     const p = new Player();
     p.name = name;
     p.x = 0; p.y = 0; p.z = 1040;
-    p.look = num(Math.floor(options?.look ?? 0), 0, 255);
+    p.ry = 0; p.spd = 0; p.air = false; p.veh = 0; // ค่าเริ่มต้นครบทุกช่อง (ช่องว่าง = NaN ฝั่งเกม)
+    // ของที่มี: นักเรียนมีรหัส = ของที่ซื้อไว้ · แขก = ของฟรีอย่างเดียว (ซื้อได้ แต่หายเมื่อออก)
+    const owned = [...new Set([...FREE_ITEMS, ...(stu?.owned || [])])];
+    Object.assign(p, cleanLook(stu?.equip || options?.look, owned));
+    p.wallet = Math.min(65535, stu?.coins || 0);
     p.online = true;
     p.coded = !!studentCode;
+    p.seat = '';
     this.state.players.set(client.sessionId, p);
-    this.meta.set(client.sessionId, { studentCode, attempts: {}, solvedIds: new Set() });
+    this.meta.set(client.sessionId, { studentCode, attempts: {}, solvedIds: new Set(), owned, lastVeh: stu?.equip?.veh || 0 });
+    client.send('profile', { owned, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit }, lastVeh: stu?.equip?.veh || 0 });
     client.send('bank', { title: this.bankData.title, questions: this.bankData.questions });
     console.log(`[${this.roomId}] + ${p.name} (${this.state.players.size}/${MAX_PLAYERS})`);
   }
@@ -219,6 +317,9 @@ class SchoolRoom extends Room {
   removePlayer(id) {
     const p = this.state.players.get(id);
     if (!p) return;
+    this.saveProfile(id);
+    this.releasePassenger(id);
+    this.invites.delete(id);
     this.state.players.delete(id);
     this.lastChat.delete(id);
     console.log(`[${this.roomId}] - ${p.name}`);

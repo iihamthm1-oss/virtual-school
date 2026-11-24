@@ -187,3 +187,45 @@ button:disabled { opacity: 0.5; cursor: default; }
 .podium .p2 .block { height: 88px; background: linear-gradient(180deg, #d9dde8, #b6bccc); }
 .podium .p3 .block { height: 64px; background: linear-gradient(180deg, #f0b48c, #d98c5f); }
 .my-result { background: #f3effb; border-radius: 14px; padding: 12px; margin: 8px 0 14px; font-size: 16px; }
+
+/* พาหนะ */
+.float-btn { position: fixed; right: max(16px, env(safe-area-inset-right)); z-index: 12; width: 58px; height: 58px; border-radius: 50%; font-size: 26px; background: #fff; box-shadow: var(--shadow); }
+#btn-ride { bottom: 86px; }
+#btn-ride.on { background: #ffe1cc; }
+#btn-invite { bottom: 156px; }
+@media (pointer: coarse) { #btn-ride { bottom: 206px; right: max(36px, env(safe-area-inset-right)); } #btn-invite { bottom: 272px; right: max(36px, env(safe-area-inset-right)); } }
+.invite-box { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 21; background: #fffdfa; border-radius: 18px; box-shadow: var(--shadow); padding: 14px 18px; text-align: center; display: grid; gap: 10px; font-size: 17px; animation: pop 0.3s; }
+.invite-box .row { display: flex; gap: 8px; justify-content: center; }
+
+/* ร้านค้า + ตู้เสื้อผ้า */
+.locker-card { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; animation: pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.locker-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.locker-head h2 { margin: 0; flex: 1; font-size: 22px; }
+.pill.wallet { box-shadow: none; background: #fff3c4; }
+.seg { display: flex; gap: 6px; background: #f3effb; padding: 4px; border-radius: 14px; margin-bottom: 12px; }
+.seg button { flex: 1; padding: 8px; border-radius: 10px; background: none; font-weight: 500; }
+.seg button.active { background: #fff; box-shadow: 0 2px 6px rgba(59,51,85,0.12); color: var(--primary); }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.item { border: 2px solid var(--line); border-radius: 16px; padding: 12px 10px; text-align: center; display: grid; gap: 4px; justify-items: center; background: #fff; }
+.item.has { background: #f3fbf6; border-color: #bfe8d2; }
+.item .ico { font-size: 38px; line-height: 1.1; }
+.item .nm { font-weight: 600; font-size: 15px; }
+.item .ds { font-size: 12px; color: var(--ink-soft); }
+.item .btn { width: 100%; margin-top: 4px; }
+.btn.small { padding: 7px 10px; font-size: 15px; }
+.shop-msg { min-height: 22px; text-align: center; margin-top: 10px; color: var(--bad); font-size: 15px; }
+.shop-msg.ok { color: #23774f; }
+.muted-note { font-size: 12px; color: var(--ink-soft); text-align: center; margin-top: 6px; font-weight: 400; }
+.wd-sec { margin-bottom: 14px; }
+.wd-label { font-weight: 600; margin-bottom: 6px; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { background: #f3effb; border-radius: 12px; padding: 8px 12px; font-size: 14px; border: 2px solid transparent; }
+.opt.on, .sw.on, .card-opt.on { border-color: var(--primary); }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.sw { width: 38px; height: 38px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--line); }
+.sw.on { box-shadow: 0 0 0 3px var(--primary); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.card-opt { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px 6px; display: grid; justify-items: center; gap: 2px; font-size: 13px; }
+.card-opt .ico { font-size: 28px; }
+.card-opt.locked { opacity: 0.55; cursor: default; }
+.card-opt .lock { font-size: 11px; color: var(--ink-soft); }

@@ -42,6 +42,7 @@
     <div class="pill" title="เวลาที่เล่น">⏱️ <span id="timer">00:00</span></div>
     <div class="pill coin" title="เหรียญ"><i class="coin-ic"></i><span id="coins">0</span></div>
     <div class="pill" title="ภารกิจที่ทำได้">✅ <span id="progress">0/50</span></div>
+    <button id="btn-wardrobe" class="pill view-btn" title="แต่งตัว / เลือกพาหนะ (C)"><span>👕</span><span class="tx"> แต่งตัว</span></button>
     <button id="btn-view" class="pill view-btn" title="สลับมุมมอง (M)"><span>🗺️</span><span class="tx"> มุมกว้าง</span></button>
   </div>
 
@@ -52,6 +53,37 @@
       <span class="chev">▾</span>
     </button>
     <ul id="quest-list"></ul>
+  </div>
+
+  <!-- พาหนะ -->
+  <button id="btn-ride" class="float-btn hidden" title="ขึ้น/ลงพาหนะ (R)">🛹</button>
+  <button id="btn-invite" class="float-btn hidden" title="ชวนเพื่อนซ้อนท้าย (F)">🤝</button>
+  <div id="invite-box" class="invite-box hidden">
+    <div id="invite-text"></div>
+    <div class="row"><button id="invite-yes" class="btn primary">ขึ้นเลย 🚲</button><button id="invite-no" class="btn">ไม่เป็นไร</button></div>
+  </div>
+
+  <!-- ร้านค้า -->
+  <div id="shop" class="overlay hidden">
+    <div class="card locker-card">
+      <div class="locker-head"><h2>🛍️ ร้านค้าโรงเรียน</h2><span class="pill wallet">💰 <span id="shop-wallet">0</span></span><button class="icon-btn" data-close-locker>✕</button></div>
+      <div class="seg"><button data-tab="outfit" class="active">👕 ชุด</button><button data-tab="vehicle">🚲 พาหนะ</button></div>
+      <div id="shop-items" class="items"></div>
+      <div id="shop-msg" class="shop-msg"></div>
+      <div class="muted-note">ตอบภารกิจถูกเพื่อรับเหรียญ · ใช้รหัสนักเรียนเพื่อเก็บของไว้ใช้รอบหน้า</div>
+    </div>
+  </div>
+
+  <!-- ตู้เสื้อผ้า -->
+  <div id="wardrobe" class="overlay hidden">
+    <div class="card locker-card">
+      <div class="locker-head"><h2>👕 แต่งตัว</h2><button class="icon-btn" data-close-locker>✕</button></div>
+      <div class="wd-sec"><div class="wd-label">ทรงผม</div><div id="wd-hair" class="opts"></div></div>
+      <div class="wd-sec"><div class="wd-label">สีผม</div><div id="wd-haircolor" class="swatches"></div></div>
+      <div class="wd-sec"><div class="wd-label">สีผิว</div><div id="wd-skin" class="swatches"></div></div>
+      <div class="wd-sec"><div class="wd-label">ชุด</div><div id="wd-outfit" class="cards"></div></div>
+      <div class="wd-sec"><div class="wd-label">พาหนะ <span class="muted-note">(ขี่ได้เฉพาะนอกอาคาร)</span></div><div id="wd-vehicle" class="cards"></div></div>
+    </div>
   </div>
 
   <!-- แชทสำเร็จรูป -->

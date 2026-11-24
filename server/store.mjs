@@ -93,7 +93,7 @@ export function addStudents(names, klass) {
     let code;
     do { code = Array.from({ length: 5 }, () => ALPHA[randomInt(ALPHA.length)]).join(''); } while (used.has(code));
     used.add(code);
-    const s = { code, name, klass: String(klass || '').slice(0, 20), coins: 0, rounds: 0, solved: 0 };
+    const s = { code, name, klass: String(klass || '').slice(0, 20), coins: 0, rounds: 0, solved: 0, owned: [], equip: null };
     all.push(s);
     added.push(s);
   }
@@ -103,15 +103,24 @@ export function addStudents(names, klass) {
 export const findStudent = (code) => listStudents().find((s) => s.code === String(code || '').toUpperCase().trim()) || null;
 export function deleteStudent(code) { write(STUDENTS, listStudents().filter((s) => s.code !== code)); }
 export function updateStudents(updates) {
-  // updates: [{code, coinsDelta, solved}]
+  // updates: [{code, solved}] ตอนจบรอบ (เหรียญบันทึกแยกด้วย saveProfile)
   const all = listStudents();
   for (const u of updates) {
     const s = all.find((x) => x.code === u.code);
     if (!s) continue;
-    s.coins = Math.max(0, s.coins + (u.coinsDelta || 0));
     s.solved += u.solved || 0;
     s.rounds += 1;
   }
+  write(STUDENTS, all);
+}
+/** บันทึกกระเป๋าเหรียญ ของที่มี และการแต่งตัวของนักเรียน */
+export function saveProfile(code, { coins, owned, equip }) {
+  const all = listStudents();
+  const s = all.find((x) => x.code === code);
+  if (!s) return;
+  s.coins = Math.max(0, Math.floor(coins));
+  s.owned = [...new Set(owned)];
+  s.equip = equip;
   write(STUDENTS, all);
 }
 

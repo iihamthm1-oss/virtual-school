@@ -1,12 +1,14 @@
 import * as THREE from 'three';
-import { buildWorld, QUEST_SPOTS, SPAWN } from './world.js';
+import { buildWorld, QUEST_SPOTS, SPAWN, SHOP_FRONT } from './world.js';
 import { createCharacter, Controls, Player } from './player.js';
 import { QuestManager, topicInfo, NEAR_DIST } from './quests.js';
 import { openQuestion, toast, banner, sfx } from './ui.js';
 import { makeLabel } from './util.js';
 import bank from './data/bank-p4-6.js';
 import { createNPCs } from './npc.js';
-import { Net, lookFromName, lookStyle, showBubble } from './net.js';
+import { Net, showBubble } from './net.js';
+import { createLocker } from './locker.js';
+import { DEFAULT_LOOK, FREE_ITEMS, VEHICLES, cleanLook } from './catalog.js';
 import { PRESETS, EMOJIS } from './chat.js';
 import { API_URL } from './config.js';
 
@@ -72,6 +74,88 @@ scene.add(arrow);
 const state = { overview: false, started: false, startTime: 0, trackedId: null, modalOpen: false, near: null };
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
+// ── ของสะสมของเรา: หน้าตา ของที่มี กระเป๋าเหรียญ พาหนะ ──
+// ออนไลน์: เซิร์ฟเวอร์เป็นคนเก็บ · เล่นคนเดียว: เก็บในเครื่อง (localStorage)
+const SOLO_KEY = 'vs-solo';
+const prof = { look: { ...DEFAULT_LOOK }, owned: [...FREE_ITEMS], wallet: 0, veh: 0, riding: 0 };
+try { const sv = JSON.parse(localStorage.getItem(SOLO_KEY) || '{}'); Object.assign(prof, { look: cleanLook(sv.look, [...FREE_ITEMS, ...(sv.owned || [])]), owned: [...new Set([...FREE_ITEMS, ...(sv.owned || [])])], wallet: sv.wallet || 0, veh: sv.veh || 0 }); } catch { /* ข้อมูลเสีย ใช้ค่าเริ่มต้น */ }
+let myName = '';
+const saveSolo = () => { if (!online) localStorage.setItem(SOLO_KEY, JSON.stringify({ look: prof.look, owned: prof.owned, wallet: prof.wallet, veh: prof.veh })); else localStorage.setItem('vs-look', JSON.stringify(prof.look)); };
+const wallet = () => (online ? net.me?.wallet ?? 0 : prof.wallet);
+const vehicleOf = (id) => VEHICLES.find((v) => v.id === id);
+
+/** สร้างตัวละครเราใหม่ (หลังเปลี่ยนชุด/ทรงผม) */
+function rebuildMe() {
+  if (!state.started) return;
+  scene.remove(character.root);
+  character = createCharacter({ name: myName, look: prof.look });
+  scene.add(character.root);
+  player.c = character;
+  shownRide = null;
+}
+const isIndoors = () => { const h = world.buildingAt(player.pos); return !!(h && (h.cut || h.room)) || player.pos.y > 0.3; };
+/** ขึ้น/ลงพาหนะ */
+function setRiding(id) {
+  if (id && isIndoors()) return toast('ขี่พาหนะได้เฉพาะนอกอาคารนะ');
+  prof.riding = id;
+  player.vehicleSpeed = id ? vehicleOf(id).speed : 0;
+  if (online) net.ride(id);
+  updateRideButtons();
+}
+let shownRide = null;
+function updateRideButtons() {
+  const seated = online && net.me?.seat;
+  const ownsVehicle = prof.owned.some((k) => k[0] === 'v');
+  $('btn-ride').classList.toggle('hidden', !state.started || (!ownsVehicle && !seated));
+  $('btn-ride').classList.toggle('on', !!(prof.riding || seated));
+  $('btn-ride').textContent = seated ? '⬇️' : prof.riding ? '🚶' : vehicleOf(prof.veh)?.icon || '🛹';
+  $('btn-ride').title = seated ? 'ลงจากซ้อนท้าย (R)' : prof.riding ? 'ลงจากพาหนะ (R)' : 'ขึ้นพาหนะ (R)';
+  $('btn-invite').classList.toggle('hidden', !(online && prof.riding === 5 && !seated));
+}
+function toggleRide() {
+  if (online && net.me?.seat) { net.unseat(); return; }
+  if (prof.riding) return setRiding(0);
+  if (!prof.veh) { toast('เลือกพาหนะในตู้เสื้อผ้า 👕 ก่อนนะ'); return locker.openWardrobe(); }
+  setRiding(prof.veh);
+}
+$('btn-ride').onclick = toggleRide;
+$('btn-invite').onclick = () => net.invite();
+
+const locker = createLocker({
+  wallet,
+  owned: () => prof.owned,
+  look: () => prof.look,
+  vehicle: () => prof.veh,
+  async buy(key) {
+    if (online) return net.buy(key);
+    const { priceOf } = await import('./catalog.js');
+    const price = priceOf(key);
+    if (prof.owned.includes(key)) return { ok: false, msg: 'มีของชิ้นนี้แล้ว' };
+    if (prof.wallet < price) return { ok: false, msg: 'เหรียญไม่พอ' };
+    prof.wallet -= price; prof.owned.push(key); saveSolo(); updateHud(); updateRideButtons();
+    return { ok: true };
+  },
+  setLook(look) {
+    prof.look = cleanLook(look, prof.owned);
+    if (online) net.sendLook(prof.look);
+    saveSolo();
+    rebuildMe();
+  },
+  selectVehicle(id) {
+    prof.veh = id;
+    saveSolo();
+    setRiding(id && !isIndoors() ? id : 0);
+  },
+  onOpen(open) { state.modalOpen = open; controls.enabled = !open; if (open) controls.keys.clear(); },
+});
+$('btn-wardrobe').onclick = () => locker.openWardrobe();
+addEventListener('keydown', (e) => {
+  if (!state.started || e.target.tagName === 'INPUT') return;
+  if (e.code === 'KeyC' && !state.modalOpen) locker.openWardrobe();
+  if (e.code === 'KeyR' && !state.modalOpen) toggleRide();
+  if (e.code === 'KeyF' && online && prof.riding === 5) net.invite();
+});
+
 // ── หน้าเริ่ม: เข้าห้องด้วยรหัส / สร้างห้อง / เล่นคนเดียว ──
 const net = new Net(scene);
 let online = false;
@@ -96,14 +180,16 @@ async function enter(mode) {
       name = (await res.json()).name;
     } catch { return startMsg('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง'); }
   }
-  const look = lookFromName(name);
   if (mode !== 'solo') {
     const code = $('code').value.trim();
     if (!/^\d{6}$/.test(code)) return startMsg('กรอกรหัสห้อง 6 หลักจากครูก่อนนะ');
     busy(true);
     startMsg('กำลังเชื่อมต่อ...', true);
     try {
-      await net.connect({ code, name, look, studentCode: studentCode || undefined });
+      let guestLook = prof.look;
+      try { guestLook = cleanLook(JSON.parse(localStorage.getItem('vs-look') || 'null') || DEFAULT_LOOK); } catch { /* ใช้ค่าเริ่มต้น */ }
+      prof.look = guestLook; prof.owned = [...FREE_ITEMS]; prof.veh = 0;
+      await net.connect({ code, name, look: guestLook, studentCode: studentCode || undefined });
       online = true;
     } catch (e) {
       busy(false);
@@ -112,7 +198,8 @@ async function enter(mode) {
     }
   }
   scene.remove(character.root);
-  character = createCharacter({ name, ...lookStyle(look) });
+  myName = name;
+  character = createCharacter({ name, look: prof.look });
   scene.add(character.root);
   player = new Player(character, world);
   player.pos.set(SPAWN.x, 0, SPAWN.z);
@@ -131,6 +218,7 @@ async function enter(mode) {
   controls.enabled = true;
   controls.yaw = 0;
   state.started = true;
+  updateRideButtons();
   state.startTime = performance.now();
   sfx('open');
   if (online) { syncPhase(); toast(`เข้าห้อง ${net.code} แล้ว · ${name}`); }
@@ -208,6 +296,27 @@ net.on('results', (r) => {
 });
 $('btn-res-close').onclick = () => $('results').classList.add('hidden');
 net.on('bonus', (m) => { quests.coins += m.coins; updateHud(); sfx('coin'); toast(`🎁 ครูให้โบนัส ${m.coins} เหรียญ!`); });
+net.on('profile', (p) => {
+  prof.owned = p.owned;
+  if (p.lastVeh !== undefined && !prof.veh) prof.veh = p.lastVeh;
+  const changed = JSON.stringify(p.look) !== JSON.stringify(prof.look);
+  prof.look = p.look;
+  if (changed) rebuildMe();
+  updateRideButtons();
+  locker.refresh();
+});
+let inviteFrom = null, inviteTimer = 0;
+net.on('invite', (m) => {
+  inviteFrom = m.from;
+  $('invite-text').textContent = `🚲 ${m.name} ชวนนั่งซ้อนท้าย`;
+  $('invite-box').classList.remove('hidden');
+  sfx('open');
+  clearTimeout(inviteTimer);
+  inviteTimer = setTimeout(() => $('invite-box').classList.add('hidden'), 15000);
+});
+$('invite-yes').onclick = () => { if (prof.riding) setRiding(0); net.accept(inviteFrom); $('invite-box').classList.add('hidden'); };
+$('invite-no').onclick = () => $('invite-box').classList.add('hidden');
+net.on('inviteResult', (m) => toast(m.msg));
 net.on('kicked', () => banner('<div class="big">ครูนำคุณออกจากห้อง</div><div>ถ้าคิดว่าผิดพลาด ให้บอกครูนะ</div>', 10000));
 net.on('closed', () => banner('<div class="big">ครูปิดห้องแล้ว</div><div>ขอบคุณที่มาเรียนนะ 👋</div>', 10000));
 
@@ -257,9 +366,9 @@ function updateHud() {
   const left = online ? net.secondsLeft : null;
   const s = left ?? Math.floor((performance.now() - state.startTime) / 1000);
   $('timer').parentElement.classList.toggle('timer-low', left !== null && left <= 60);
-  if (online && left === null) { $('timer').textContent = net.phase === 'ended' ? 'จบรอบ' : 'รอเริ่ม'; $('coins').textContent = quests.coins; $('progress').textContent = `${quests.solved}/${quests.bank.length}`; $('online').textContent = net.count; return; }
+  if (online && left === null) { $('timer').textContent = net.phase === 'ended' ? 'จบรอบ' : 'รอเริ่ม'; $('coins').textContent = wallet(); $('progress').textContent = `${quests.solved}/${quests.bank.length}`; $('online').textContent = net.count; return; }
   $('timer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  $('coins').textContent = quests.coins;
+  $('coins').textContent = wallet();
   $('progress').textContent = `${quests.solved}/${quests.bank.length}`;
   if (online) $('online').textContent = net.count;
 }
@@ -268,13 +377,15 @@ quests.on((type, data) => {
   if (type === 'change') { renderQuestList(); updateHud(); }
   if (type === 'finished') {
     sfx('coin');
-    banner(`<div class="big">🏆 ภารกิจครบ ${bank.questions.length} ข้อ!</div><div>โบนัส +${data.bonus} เหรียญ · เดินเล่นต่อได้เลย</div>`, 5000);
+    if (!online) { prof.wallet += data.bonus; saveSolo(); }
+    banner(`<div class="big">🏆 ภารกิจครบ ${quests.bank.length} ข้อ!</div><div>โบนัส +${data.bonus} เหรียญ · เดินเล่นต่อได้เลย</div>`, 5000);
   }
 });
 
 // ── ตอบภารกิจ ──
 function tryInteract() {
   const n = state.near;
+  if (!n && state.nearShop && !state.modalOpen) return locker.openShop();
   if (!n || state.modalOpen) return;
   const left = quests.cooldownLeft(n);
   if (left) return toast(`รออีก ${left} วินาทีนะ`);
@@ -285,6 +396,7 @@ function tryInteract() {
     onResult: (correct) => {
       const reward = quests.submit(n, correct);
       if (online) net.sendAnswer(n.q.id, correct);
+      else if (reward) { prof.wallet += reward; saveSolo(); }
       if (correct) {
         $('coins').parentElement.classList.remove('bump');
         void $('coins').parentElement.offsetWidth;
@@ -349,19 +461,37 @@ function frame() {
   net.update(dt, t);
 
   if (state.started) {
-    player.update(dt, controls, t);
-    if (online) net.sendMove(player, performance.now());
+    const seated = online && net.me?.seat;
+    const wantRide = seated ? 'passenger' : prof.riding;
+    if (shownRide !== wantRide) { character.setRide(wantRide); shownRide = wantRide; updateRideButtons(); }
+    if (seated) {
+      // นั่งซ้อนท้าย: ตำแหน่งตามคนขับที่เซิร์ฟเวอร์ส่งมา
+      const me = net.me, k = 1 - Math.exp(-dt * 12);
+      player.pos.x += (me.x / 10 - player.pos.x) * k; player.pos.y += (me.y / 10 - player.pos.y) * k; player.pos.z += (me.z / 10 - player.pos.z) * k;
+      player.facing = ((me.ry || 0) / 255) * Math.PI * 2;
+      character.root.position.copy(player.pos);
+      character.root.rotation.y = player.facing;
+      character.animate(dt, (me.spd || 0) / 10, false, t);
+    } else {
+      player.update(dt, controls, t);
+      if (online) net.sendMove(player, performance.now());
+      if (prof.riding && isIndoors()) { setRiding(0); toast('ลงจากพาหนะก่อนเข้าอาคารนะ 🚶'); }
+    }
     if (controls.interactQueued) { controls.interactQueued = false; tryInteract(); }
 
     // ภารกิจที่อยู่ใกล้
     const nn = quests.nearest(player.pos);
     state.near = nn && nn.dist < NEAR_DIST ? nn.quest : null;
+    state.nearShop = Math.hypot(player.pos.x - SHOP_FRONT.x, player.pos.z - SHOP_FRONT.z) < 3.4 && player.pos.y < 0.5;
     const prompt = $('prompt');
     if (state.near && !state.modalOpen) {
       const left = quests.cooldownLeft(state.near);
       prompt.classList.remove('hidden');
       prompt.classList.toggle('cooling', left > 0);
       prompt.textContent = left ? `⏳ รออีก ${left} วินาที` : `❓ ตอบภารกิจ${isTouch ? '' : ' (E)'}`;
+    } else if (state.nearShop && !state.modalOpen) {
+      prompt.classList.remove('hidden', 'cooling');
+      prompt.textContent = `🛍️ เปิดร้านค้า${isTouch ? '' : ' (E)'}`;
     } else prompt.classList.add('hidden');
 
     // ลูกศรนำทาง

@@ -1353,3 +1353,6 @@ function bakeStatic(root) {
     root.add(m);
   }
 }
+
+/** หน้าร้านค้า (เดินมาใกล้ ๆ แล้วเปิดร้านได้) */
+export const SHOP_FRONT = { x: 22, z: 63.6 };

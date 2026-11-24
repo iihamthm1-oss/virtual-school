@@ -1,121 +1,6 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeLabel } from './util.js';
 
-const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 });
-/** รวมชิ้นส่วนลูกในกลุ่มเป็นชิ้นเดียว (สีเก็บในจุดยอด) ลดภาระการ์ดจอสำหรับ NPC */
-function mergeChildren(group) {
-  const geos = [], rm = [];
-  for (const c of group.children) {
-    if (!c.isMesh) continue;
-    c.updateMatrix();
-    let g = c.geometry.clone().applyMatrix4(c.matrix);
-    if (g.index) g = g.toNonIndexed();
-    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
-    const col = c.material.color, n = g.attributes.position.count, arr = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { arr[i * 3] = col.r; arr[i * 3 + 1] = col.g; arr[i * 3 + 2] = col.b; }
-    g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-    geos.push(g); rm.push(c);
-  }
-  if (!geos.length) return;
-  rm.forEach((c) => group.remove(c));
-  const m = new THREE.Mesh(mergeGeometries(geos), vcMat);
-  m.castShadow = true;
-  group.add(m);
-}
-
-/** ตัวละครหัวโตในชุดนักเรียนไทย สร้างจากรูปทรงพื้นฐาน */
-export function createCharacter({ name = '', skin = '#f6d3b3', hair = '#3b2a2a', bottom = '#2f3a6b', shirt = '#ffffff', skirt = false, long = false, hairLong = false, lite = false } = {}) {
-  const g = new THREE.Group();
-  const body = new THREE.Group();
-  g.add(body);
-
-  const part = (geo, color, x, y, z, parent = body) => {
-    const m = new THREE.Mesh(geo, mat(color));
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    parent.add(m);
-    return m;
-  };
-
-  // ขา (หมุนรอบสะโพก)
-  const legs = [];
-  for (const s of [-1, 1]) {
-    const hip = new THREE.Group();
-    hip.position.set(s * 0.13, 0.48, 0);
-    body.add(hip);
-    part(new THREE.CylinderGeometry(0.1, 0.09, 0.32, 7), long ? bottom : skin, 0, -0.26, 0, hip);
-    part(new THREE.BoxGeometry(0.2, 0.12, 0.3), '#2b2b33', 0, -0.44, 0.04, hip); // รองเท้า
-    part(new THREE.CylinderGeometry(0.115, 0.115, 0.12, 7), '#ffffff', 0, -0.36, 0, hip); // ถุงเท้า
-    legs.push(hip);
-  }
-  // กางเกงขาสั้น หรือกระโปรง
-  if (skirt) part(new THREE.CylinderGeometry(0.24, 0.36, 0.3, 8), bottom, 0, 0.46, 0);
-  else part(new THREE.CylinderGeometry(0.26, 0.28, 0.2, 8), bottom, 0, 0.5, 0);
-  // ลำตัว เสื้อนักเรียนสีขาว
-  part(new THREE.CylinderGeometry(0.22, 0.27, 0.42, 8), shirt, 0, 0.78, 0);
-  part(new THREE.BoxGeometry(0.3, 0.06, 0.12), shirt, 0, 0.98, 0.12); // ปกเสื้อ
-  part(new THREE.BoxGeometry(0.07, 0.07, 0.02), '#2f3a6b', 0.11, 0.86, 0.24); // ตราโรงเรียน
-  // แขน
-  const arms = [];
-  for (const s of [-1, 1]) {
-    const sh = new THREE.Group();
-    sh.position.set(s * 0.3, 0.94, 0);
-    body.add(sh);
-    part(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 7), shirt, 0, -0.07, 0, sh);
-    part(new THREE.CylinderGeometry(0.07, 0.065, 0.22, 7), skin, 0, -0.24, 0, sh);
-    part(new THREE.SphereGeometry(0.075, 7, 5), skin, 0, -0.37, 0, sh);
-    sh.rotation.z = s * 0.12;
-    arms.push(sh);
-  }
-  // หัวโต
-  const head = new THREE.Group();
-  head.position.y = 1.38;
-  body.add(head);
-  part(new THREE.IcosahedronGeometry(0.43, 1), skin, 0, 0, 0, head);
-  const hairCap = part(new THREE.SphereGeometry(0.46, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.55), hair, 0, 0.04, -0.03, head);
-  hairCap.rotation.x = -0.25;
-  part(new THREE.BoxGeometry(0.62, 0.14, 0.2), hair, 0, 0.22, 0.32, head); // หน้าม้า
-  if (hairLong) part(new THREE.BoxGeometry(0.72, 0.6, 0.28), hair, 0, -0.12, -0.28, head);
-  // ตา แก้ม ปาก
-  for (const s of [-1, 1]) {
-    part(new THREE.SphereGeometry(0.06, 8, 6), '#2a2238', s * 0.15, -0.02, 0.38, head).scale.set(0.9, 1.2, 0.6);
-    part(new THREE.SphereGeometry(0.02, 6, 4), '#ffffff', s * 0.15 + 0.02, 0.02, 0.42, head);
-    part(new THREE.SphereGeometry(0.06, 8, 6), '#ffa4b0', s * 0.25, -0.12, 0.33, head).scale.set(1, 0.6, 0.4);
-  }
-  part(new THREE.TorusGeometry(0.05, 0.014, 4, 8, Math.PI), '#7a3b45', 0, -0.14, 0.4, head).rotation.z = Math.PI;
-
-  if (name) {
-    const lab = makeLabel(name, { size: 0.42, bg: 'rgba(59,51,85,0.75)', fg: '#ffffff' });
-    lab.position.y = 2.0;
-    g.add(lab);
-  }
-
-  if (lite) [body, head, ...legs, ...arms].forEach(mergeChildren);
-
-  // เงาวงกลมใต้เท้า (ช่วยให้เห็นตำแหน่งตอนกระโดด)
-  const blob = new THREE.Mesh(new THREE.CircleGeometry(0.4, 16), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.18, depthWrite: false }));
-  blob.rotation.x = -Math.PI / 2;
-  blob.position.y = 0.06;
-  g.add(blob);
-
-  let phase = 0;
-  return {
-    root: g, body, blob, legs, arms, head,
-    animate(dt, speed, airborne, t) {
-      const moving = speed > 0.5;
-      phase += dt * (moving ? 6 + speed * 0.9 : 0);
-      const swing = airborne ? 0.5 : moving ? Math.sin(phase) * Math.min(1, speed / 6) * 0.8 : 0;
-      legs[0].rotation.x += ((airborne ? -0.6 : swing) - legs[0].rotation.x) * Math.min(1, dt * 15);
-      legs[1].rotation.x += ((airborne ? 0.3 : -swing) - legs[1].rotation.x) * Math.min(1, dt * 15);
-      arms[0].rotation.x += ((airborne ? -2.4 : -swing) - arms[0].rotation.x) * Math.min(1, dt * 15);
-      arms[1].rotation.x += ((airborne ? -2.4 : swing) - arms[1].rotation.x) * Math.min(1, dt * 15);
-      const bob = moving && !airborne ? Math.abs(Math.sin(phase)) * 0.06 : Math.sin(t * 2) * 0.012;
-      body.position.y = bob;
-      head.rotation.z = moving ? Math.sin(phase) * 0.05 : Math.sin(t * 1.3) * 0.03;
-    },
-  };
-}
+export { createCharacter } from './character.js';
 
 /** การบังคับ: คีย์บอร์ด เมาส์ จอยสติ๊กบนจอสัมผัส */
 export class Controls {
@@ -237,9 +122,11 @@ export class Player {
     // ไปข้างหน้าตามมุมกล้อง: forward = (-sin, -cos), right = (cos, -sin)
     const dx = m.x * cy - m.y * sy;
     const dz = -m.x * sy - m.y * cy;
-    const target = (controls.run ? 10 : 6.5) * Math.min(1, Math.hypot(m.x, m.y));
+    // ขี่พาหนะ: เร็วขึ้นตามชนิด และเร่ง/เลี้ยวนุ่มกว่าเดิน
+    const top = this.vehicleSpeed || (controls.run ? 10 : 6.5);
+    const target = top * Math.min(1, Math.hypot(m.x, m.y));
     const len = Math.hypot(dx, dz);
-    const accel = Math.min(1, dt * 12);
+    const accel = Math.min(1, dt * (this.vehicleSpeed ? 4 : 12));
     const wantX = len > 0.01 ? (dx / len) * target : 0;
     const wantZ = len > 0.01 ? (dz / len) * target : 0;
     this.vel.x += (wantX - this.vel.x) * accel;
@@ -263,7 +150,7 @@ export class Player {
       const want = Math.atan2(this.vel.x, this.vel.z);
       let diff = want - this.facing;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      this.facing += diff * Math.min(1, dt * 12);
+      this.facing += diff * Math.min(1, dt * (this.vehicleSpeed ? 6 : 12));
     }
     this.c.root.position.copy(this.pos);
     this.c.root.rotation.y = this.facing;

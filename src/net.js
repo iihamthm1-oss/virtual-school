@@ -6,15 +6,6 @@ import { chatText } from './chat.js';
 
 import { SERVER_URL } from './config.js';
 
-const SKINS = ['#f6d3b3', '#e9b98f', '#d9a074', '#f9dcc4'];
-const HAIRS = ['#3b2a2a', '#2a2238', '#5a3a2a', '#1f1a24'];
-/** หน้าตาชั่วคราวจากชื่อ (ระบบแต่งตัวจริงมาในช่วงที่ 4) */
-export function lookFromName(name) {
-  let h = 7;
-  for (const ch of name) h = (h * 31 + ch.codePointAt(0)) & 255;
-  return h;
-}
-export const lookStyle = (look) => ({ skin: SKINS[look & 3], hair: HAIRS[(look >> 2) & 3] });
 
 /** ฟองข้อความเหนือหัว */
 export function showBubble(root, text) {
@@ -48,10 +39,12 @@ export class Net {
   get count() { return this.room?.state?.players?.size || 1; }
 
   async connect({ code, name, look, studentCode }) {
+    this.buyWait = null;
     const client = new Client(SERVER_URL);
     this.room = await client.joinById(code, { name, look, studentCode });
     const room = this.room;
-    for (const type of ['bank', 'phase', 'results', 'kicked', 'closed', 'bonus']) room.onMessage(type, (m) => this.emit(type, m));
+    for (const type of ['bank', 'phase', 'results', 'kicked', 'closed', 'bonus', 'profile', 'invite', 'inviteResult']) room.onMessage(type, (m) => this.emit(type, m));
+    room.onMessage('buyResult', (m) => { this.buyWait?.(m); this.buyWait = null; });
     room.send('getBank');
     room.onMessage('chat', (m) => {
       const text = chatText(m);
@@ -77,6 +70,20 @@ export class Net {
     this.room.send('move', msg);
   }
   sendAnswer(qid, correct) { this.room?.send('answer', { qid, correct }); }
+  sendLook(look) { this.room?.send('look', look); }
+  ride(veh) { this.room?.send('ride', { veh }); }
+  invite() { this.room?.send('invite'); }
+  accept(from) { this.room?.send('accept', { from }); }
+  unseat() { this.room?.send('unseat'); }
+  buy(item) {
+    return new Promise((resolve) => {
+      this.buyWait = resolve;
+      this.room.send('buy', { item });
+      setTimeout(() => { if (this.buyWait === resolve) { this.buyWait = null; resolve({ ok: false, msg: 'เซิร์ฟเวอร์ไม่ตอบ ลองใหม่อีกครั้ง' }); } }, 5000);
+    });
+  }
+  /** ข้อมูลของเราเองบนเซิร์ฟเวอร์ */
+  get me() { return this.room?.state?.players?.get(this.room.sessionId); }
   get phase() { return this.room?.state?.phase || 'lobby'; }
   /** วินาทีที่เหลือในรอบ (ชดเชยนาฬิกาเครื่องกับเซิร์ฟเวอร์) */
   get secondsLeft() {
@@ -97,21 +104,27 @@ export class Net {
       if (id === this.room.sessionId) return;
       seen.add(id);
       let r = this.remotes.get(id);
-      if (!r) {
-        const c = createCharacter({ name: p.name, lite: true, ...lookStyle(p.look) });
+      const lookKey = `${p.skin},${p.hair},${p.hairColor},${p.outfit}`;
+      if (!r || r.lookKey !== lookKey) {
+        // เพื่อนเปลี่ยนชุด/ทรงผม: สร้างตัวละครใหม่
+        const c = createCharacter({ name: p.name, lite: true, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit } });
         this.scene.add(c.root);
-        r = { c, name: p.name, pos: new THREE.Vector3(p.x / 10, p.y / 10, p.z / 10), ry: (p.ry / 255) * TAU };
+        if (r) this.scene.remove(r.c.root);
+        else this.emit('join', p.name);
+        r = { ...(r || { pos: new THREE.Vector3((p.x || 0) / 10, (p.y || 0) / 10, (p.z || 0) / 10), ry: ((p.ry || 0) / 255) * TAU }), c, name: p.name, lookKey, ride: 0 };
         this.remotes.set(id, r);
-        this.emit('join', p.name);
       }
+      const ride = p.seat ? 'passenger' : p.veh;
+      if (r.ride !== ride) { r.c.setRide(ride); r.ride = ride; }
       const tx = p.x / 10, ty = p.y / 10, tz = p.z / 10;
       if (Math.hypot(tx - r.pos.x, tz - r.pos.z) > 12) r.pos.set(tx, ty, tz); // ไกลมาก = วาร์ป
       else { r.pos.x += (tx - r.pos.x) * k; r.pos.y += (ty - r.pos.y) * k; r.pos.z += (tz - r.pos.z) * k; }
-      r.ry = lerpAngle(r.ry, (p.ry / 255) * TAU, k);
+      const ry = ((p.ry || 0) / 255) * TAU;
+      r.ry = Number.isFinite(r.ry) ? lerpAngle(r.ry, ry, k) : ry;
       r.c.root.position.copy(r.pos);
       r.c.root.rotation.y = r.ry;
       r.c.blob.visible = !p.air;
-      r.c.animate(dt, p.spd / 10, p.air, t);
+      r.c.animate(dt, (p.spd || 0) / 10, !!p.air && !ride, t);
     });
     for (const [id, r] of this.remotes) {
       if (seen.has(id)) continue;
