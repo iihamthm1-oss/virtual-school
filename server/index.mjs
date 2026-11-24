@@ -137,6 +137,14 @@ class SchoolRoom extends Room {
       if (p && meta) client.send('profile', { owned: meta.owned, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit }, lastVeh: meta.lastVeh || 0 });
     });
 
+    this.onMessage('emote', (client, m) => {
+      const p = player(client);
+      const now = Date.now();
+      if (!p || !Number.isInteger(m?.e) || m.e < 0 || m.e > 2 || now - (this.lastChat.get(client.sessionId + 'e') || 0) < 1500) return;
+      this.lastChat.set(client.sessionId + 'e', now);
+      this.broadcast('emote', { id: client.sessionId, e: m.e }, { except: client });
+    });
+
     this.onMessage('chat', (client, m) => {
       const p = player(client);
       if (!p || p.muted) return;

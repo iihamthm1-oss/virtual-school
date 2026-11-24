@@ -8,6 +8,9 @@ import bank from './data/bank-p4-6.js';
 import { createNPCs } from './npc.js';
 import { Net, showBubble } from './net.js';
 import { createLocker } from './locker.js';
+import { initAudio, play, setMusic, setSfx, audioSettings, setOutdoors } from './audio.js';
+import { createQuality, TIERS } from './quality.js';
+import { createFx } from './fx.js';
 import { DEFAULT_LOOK, FREE_ITEMS, VEHICLES, cleanLook } from './catalog.js';
 import { PRESETS, EMOJIS } from './chat.js';
 import { API_URL } from './config.js';
@@ -42,6 +45,8 @@ sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 const roomLight = new THREE.AmbientLight('#fff8ee', 0); // ไฟในห้อง (สว่างขึ้นตอนอยู่ในห้อง)
 scene.add(roomLight);
+const quality = createQuality({ renderer, sun });
+const fx = createFx(scene);
 
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
@@ -97,6 +102,7 @@ const isIndoors = () => { const h = world.buildingAt(player.pos); return !!(h &&
 /** ขึ้น/ลงพาหนะ */
 function setRiding(id) {
   if (id && isIndoors()) return toast('ขี่พาหนะได้เฉพาะนอกอาคารนะ');
+  if (id !== prof.riding) play(id ? 'ride' : 'whoosh');
   prof.riding = id;
   player.vehicleSpeed = id ? vehicleOf(id).speed : 0;
   if (online) net.ride(id);
@@ -127,12 +133,13 @@ const locker = createLocker({
   look: () => prof.look,
   vehicle: () => prof.veh,
   async buy(key) {
-    if (online) return net.buy(key);
+    if (online) { const r = await net.buy(key); if (r.ok) play('buy'); return r; }
     const { priceOf } = await import('./catalog.js');
     const price = priceOf(key);
     if (prof.owned.includes(key)) return { ok: false, msg: 'มีของชิ้นนี้แล้ว' };
     if (prof.wallet < price) return { ok: false, msg: 'เหรียญไม่พอ' };
     prof.wallet -= price; prof.owned.push(key); saveSolo(); updateHud(); updateRideButtons();
+    play('buy');
     return { ok: true };
   },
   setLook(look) {
@@ -149,11 +156,38 @@ const locker = createLocker({
   onOpen(open) { state.modalOpen = open; controls.enabled = !open; if (open) controls.keys.clear(); },
 });
 $('btn-wardrobe').onclick = () => locker.openWardrobe();
+let lastEmote = 0;
+function doEmote(e) {
+  if (prof.riding || performance.now() - lastEmote < 1500) return;
+  lastEmote = performance.now();
+  character.emote(e);
+  if (online) net.emote(e);
+  play('pop');
+  $('chat-panel').classList.add('hidden');
+}
+$('chat-emotes').onclick = (ev) => { const b = ev.target.closest('[data-emote]'); if (b) doEmote(Number(b.dataset.emote)); };
+
+// ── ตั้งค่า ──
+function renderSettings() {
+  document.querySelectorAll('#q-seg button').forEach((b) => b.classList.toggle('active', b.dataset.q === quality.mode));
+  $('q-now').textContent = `(ตอนนี้: ${TIERS[quality.tier].label} · ${quality.fps} เฟรม/วินาที)`;
+  const a = audioSettings();
+  $('opt-music').checked = a.music;
+  $('opt-sfx').checked = a.sfx;
+}
+$('btn-settings').onclick = () => { renderSettings(); $('settings').classList.remove('hidden'); state.modalOpen = true; controls.enabled = false; };
+const closeSettings = () => { $('settings').classList.add('hidden'); state.modalOpen = false; controls.enabled = true; };
+$('settings-close').onclick = closeSettings;
+$('settings').addEventListener('click', (e) => { if (e.target.id === 'settings') closeSettings(); });
+$('q-seg').onclick = (e) => { const b = e.target.closest('[data-q]'); if (b) { quality.set(b.dataset.q); renderSettings(); } };
+$('opt-music').onchange = (e) => setMusic(e.target.checked);
+$('opt-sfx').onchange = (e) => setSfx(e.target.checked);
 addEventListener('keydown', (e) => {
   if (!state.started || e.target.tagName === 'INPUT') return;
   if (e.code === 'KeyC' && !state.modalOpen) locker.openWardrobe();
   if (e.code === 'KeyR' && !state.modalOpen) toggleRide();
   if (e.code === 'KeyF' && online && prof.riding === 5) net.invite();
+  if (['Digit1', 'Digit2', 'Digit3'].includes(e.code) && !state.modalOpen) doEmote(Number(e.code.slice(5)) - 1);
 });
 
 // ── หน้าเริ่ม: เข้าห้องด้วยรหัส / สร้างห้อง / เล่นคนเดียว ──
@@ -168,6 +202,7 @@ const startMsg = (text, ok = false) => { $('start-msg').textContent = text; $('s
 const busy = (on) => ['btn-join', 'btn-solo'].forEach((id) => { $(id).disabled = on; });
 
 async function enter(mode) {
+  initAudio();
   let name = $('name').value.trim() || 'นักเรียน';
   const studentCode = $('stucode').value.trim().toUpperCase();
   localStorage.setItem('vs-name', $('name').value.trim());
@@ -219,6 +254,8 @@ async function enter(mode) {
   controls.yaw = 0;
   state.started = true;
   updateRideButtons();
+  $('btn-chat').classList.remove('hidden');
+  if (!online) $('chat-presets').classList.add('hidden');
   state.startTime = performance.now();
   sfx('open');
   if (online) { syncPhase(); toast(`เข้าห้อง ${net.code} แล้ว · ${name}`); }
@@ -251,7 +288,7 @@ PRESETS.forEach((text, p) => { const b = document.createElement('button'); b.tex
 EMOJIS.forEach((text, e) => { const b = document.createElement('button'); b.textContent = text; b.onclick = () => sendChat({ e }); $('chat-emojis').appendChild(b); });
 $('btn-chat').onclick = () => $('chat-panel').classList.toggle('hidden');
 addEventListener('keydown', (e) => {
-  if (!online || !state.started || state.modalOpen || e.target.tagName === 'INPUT') return;
+  if (!state.started || state.modalOpen || e.target.tagName === 'INPUT') return;
   if (e.code === 'KeyT') $('chat-panel').classList.toggle('hidden');
   if (e.code === 'Escape') $('chat-panel').classList.add('hidden');
 });
@@ -277,7 +314,7 @@ function syncPhase() {
     quests.reset(roundBank);
     quests.fill(player.pos);
     state.startTime = performance.now();
-    sfx('coin');
+    play('bell');
     banner('<div class="big">เริ่มรอบแล้ว! 🚀</div><div>ตามหาคริสตัลภารกิจ ลูกศรสีม่วงจะนำทาง</div>', 3000);
   } else quests.clear();
 }
@@ -292,7 +329,8 @@ net.on('results', (r) => {
   [...$('podium').querySelectorAll('.who')].forEach((el, i) => { el.textContent = order.filter(Boolean)[i]?.name ?? ''; });
   $('my-result').innerHTML = me ? `คุณได้อันดับที่ <b>${me.rank}</b> จาก ${r.total} คน<br>ทำภารกิจได้ ${quests.solved} ข้อ · ได้ ${quests.coins} เหรียญ` : '';
   $('results').classList.remove('hidden');
-  sfx('good');
+  play('fanfare');
+  fx.fireworks(0, 58, 10);
 });
 $('btn-res-close').onclick = () => $('results').classList.add('hidden');
 net.on('bonus', (m) => { quests.coins += m.coins; updateHud(); sfx('coin'); toast(`🎁 ครูให้โบนัส ${m.coins} เหรียญ!`); });
@@ -378,6 +416,8 @@ quests.on((type, data) => {
   if (type === 'finished') {
     sfx('coin');
     if (!online) { prof.wallet += data.bonus; saveSolo(); }
+    play('fanfare');
+    fx.fireworks(player.pos.x, player.pos.z - 10, 8);
     banner(`<div class="big">🏆 ภารกิจครบ ${quests.bank.length} ข้อ!</div><div>โบนัส +${data.bonus} เหรียญ · เดินเล่นต่อได้เลย</div>`, 5000);
   }
 });
@@ -398,6 +438,7 @@ function tryInteract() {
       if (online) net.sendAnswer(n.q.id, correct);
       else if (reward) { prof.wallet += reward; saveSolo(); }
       if (correct) {
+        fx.floatText(`+${reward} 💰`, n.spot.x, 3.4, n.spot.z);
         $('coins').parentElement.classList.remove('bump');
         void $('coins').parentElement.offsetWidth;
         $('coins').parentElement.classList.add('bump');
@@ -457,6 +498,8 @@ function frame() {
 
   world.update(t, dt);
   quests.update(t, dt);
+  fx.update(dt);
+  quality.tick(dt);
   npcs.update(dt, t);
   net.update(dt, t);
 
@@ -530,6 +573,7 @@ function frame() {
   const key = where && (where.cut || where.room) ? where.b.name + '|' + where.level : '';
   if (key !== state.insideKey) {
     if (key) toast(`${where.b.name} · ชั้น ${where.level + 1}`);
+    setOutdoors(!key);
     state.insideKey = key;
   }
   const inside = cut;
@@ -608,4 +652,4 @@ player.pos.set(SPAWN.x, 0, SPAWN.z);
 requestAnimationFrame(frame);
 
 // ไว้ทดสอบจากคอนโซล
-window.__vs = { net, quests, get player() { return player; }, controls, state };
+window.__vs = { fx, quality, net, quests, get player() { return player; }, controls, state };

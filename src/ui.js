@@ -4,25 +4,9 @@ import { topicInfo, COOLDOWN_SEC } from './quests.js';
 const $ = (id) => document.getElementById(id);
 const KEYS = ['ก', 'ข', 'ค', 'ง'];
 
-// ── เสียงสังเคราะห์ (ไว้เปลี่ยนเป็นไฟล์เสียงจริงในช่วงที่ 5) ──
-let ac;
-export function sfx(kind) {
-  try {
-    ac ??= new AudioContext();
-    const notes = { good: [523, 659, 784, 1046], bad: [330, 247], open: [660, 880], coin: [988, 1319] }[kind] || [440];
-    notes.forEach((f, i) => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = kind === 'bad' ? 'triangle' : 'sine';
-      o.frequency.value = f;
-      const t0 = ac.currentTime + i * 0.09;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
-      o.connect(g).connect(ac.destination);
-      o.start(t0); o.stop(t0 + 0.3);
-    });
-  } catch { /* เบราว์เซอร์ไม่รองรับเสียง */ }
-}
+// ── เสียง (ดู audio.js) ──
+import { play } from './audio.js';
+export const sfx = (kind) => play(kind);
 
 // ── อ่านออกเสียงภาษาไทย ──
 export function speak(text) {

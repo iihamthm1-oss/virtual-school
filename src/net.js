@@ -44,6 +44,7 @@ export class Net {
     this.room = await client.joinById(code, { name, look, studentCode });
     const room = this.room;
     for (const type of ['bank', 'phase', 'results', 'kicked', 'closed', 'bonus', 'profile', 'invite', 'inviteResult']) room.onMessage(type, (m) => this.emit(type, m));
+    room.onMessage('emote', (m) => this.remotes.get(m.id)?.c.emote(m.e));
     room.onMessage('buyResult', (m) => { this.buyWait?.(m); this.buyWait = null; });
     room.send('getBank');
     room.onMessage('chat', (m) => {
@@ -73,6 +74,7 @@ export class Net {
   sendLook(look) { this.room?.send('look', look); }
   ride(veh) { this.room?.send('ride', { veh }); }
   invite() { this.room?.send('invite'); }
+  emote(e) { this.room?.send('emote', { e }); }
   accept(from) { this.room?.send('accept', { from }); }
   unseat() { this.room?.send('unseat'); }
   buy(item) {

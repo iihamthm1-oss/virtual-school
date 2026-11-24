@@ -190,6 +190,7 @@ export function createCharacter(opts = {}) {
 
   let phase = 0;
   let ride = null; // { id, pose, vehicle }
+  let emote = null; // { type: 0 โบกมือ | 1 เต้น | 2 ดีใจ, t }
   const lerpTo = (obj, axis, target, k) => { obj.rotation[axis] += (target - obj.rotation[axis]) * k; };
 
   return {
@@ -206,6 +207,8 @@ export function createCharacter(opts = {}) {
       ride = { id, pose, vehicle };
     },
     get riding() { return ride?.id || 0; },
+    /** ท่าทาง: 0 โบกมือ · 1 เต้น · 2 ดีใจ (เล่น 2.5 วินาที) */
+    emote(type) { emote = { type, t: 0 }; },
     animate(dt, speed, airborne, t) {
       const k = Math.min(1, dt * 15);
       if (ride) {
@@ -226,9 +229,35 @@ export function createCharacter(opts = {}) {
         head.rotation.z = 0;
         return;
       }
+      const moving = speed > 0.5;
+      if (emote && !moving && !airborne) {
+        emote.t += dt;
+        const e = emote.t;
+        if (e > 2.5) { emote = null; body.rotation.y = 0; }
+        else if (emote.type === 0) { // โบกมือ
+          lerpTo(arms[1], 'z', 2.5 + Math.sin(e * 12) * 0.35, k); lerpTo(arms[1], 'x', 0, k);
+          lerpTo(arms[0], 'z', -0.12, k); lerpTo(arms[0], 'x', 0, k);
+          lerpTo(legs[0], 'x', 0, k); lerpTo(legs[1], 'x', 0, k);
+          body.position.y = 0; head.rotation.z = Math.sin(e * 3) * 0.12;
+          return;
+        } else if (emote.type === 1) { // เต้น
+          const b = Math.sin(e * 9);
+          lerpTo(arms[0], 'z', -1.4 - b * 0.6, k); lerpTo(arms[1], 'z', 1.4 - b * 0.6, k);
+          lerpTo(arms[0], 'x', 0, k); lerpTo(arms[1], 'x', 0, k);
+          lerpTo(legs[0], 'x', b * 0.4, k); lerpTo(legs[1], 'x', -b * 0.4, k);
+          body.position.y = Math.abs(b) * 0.12; body.rotation.y = Math.sin(e * 4.5) * 0.6; head.rotation.z = b * 0.15;
+          return;
+        } else { // ดีใจ: กระโดดชูแขน
+          const j = Math.abs(Math.sin(e * 6));
+          lerpTo(arms[0], 'x', -2.9, k); lerpTo(arms[1], 'x', -2.9, k);
+          lerpTo(arms[0], 'z', -0.4, k); lerpTo(arms[1], 'z', 0.4, k);
+          lerpTo(legs[0], 'x', -j * 0.5, k); lerpTo(legs[1], 'x', -j * 0.5, k);
+          body.position.y = j * 0.45; head.rotation.z = 0;
+          return;
+        }
+      } else if (emote && (moving || airborne)) { emote = null; body.rotation.y = 0; }
       lerpTo(arms[0], 'z', -0.12, k); lerpTo(arms[1], 'z', 0.12, k);
       body.rotation.z = 0;
-      const moving = speed > 0.5;
       phase += dt * (moving ? 6 + speed * 0.9 : 0);
       const swing = airborne ? 0.5 : moving ? Math.sin(phase) * Math.min(1, speed / 6) * 0.8 : 0;
       lerpTo(legs[0], 'x', airborne ? -0.6 : swing, k);
