@@ -13,7 +13,7 @@ import { createQuality, TIERS } from './quality.js';
 import { createFx } from './fx.js';
 import { DEFAULT_LOOK, FREE_ITEMS, VEHICLES, cleanLook } from './catalog.js';
 import { PRESETS, EMOJIS } from './chat.js';
-import { API_URL } from './config.js';
+import { API_URL, wakeServer } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -207,6 +207,14 @@ async function enter(mode) {
   const studentCode = $('stucode').value.trim().toUpperCase();
   localStorage.setItem('vs-name', $('name').value.trim());
   localStorage.setItem('vs-stucode', studentCode);
+  if (mode !== 'solo') {
+    if (!/^\d{6}$/.test($('code').value.trim())) return startMsg('กรอกรหัสห้อง 6 หลักจากครูก่อนนะ');
+    // เซิร์ฟเวอร์ฟรีอาจหลับอยู่: ปลุกก่อน
+    busy(true);
+    const awake = await wakeServer((s) => startMsg(`กำลังปลุกเซิร์ฟเวอร์... ${s} วินาที (ครั้งแรกของวันอาจนานถึง 1 นาที)`, true));
+    busy(false);
+    if (!awake) return startMsg('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง');
+  }
   if (mode !== 'solo' && studentCode) {
     // รหัสนักเรียน: ใช้ชื่อตามที่ครูลงทะเบียนไว้
     try {

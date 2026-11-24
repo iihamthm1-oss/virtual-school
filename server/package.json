@@ -1,1 +1,1 @@
-{"name":"virtual-school-server","private":true,"type":"module","scripts":{"start":"node start.mjs","bots":"node bots.mjs"},"dependencies":{"@colyseus/sdk":"^0.18.10","colyseus":"^0.18.12"}}
+{"name":"virtual-school-server","private":true,"type":"module","scripts":{"start":"node start.mjs","bots":"node bots.mjs"},"dependencies":{"@colyseus/sdk":"^0.18.10","@supabase/supabase-js":"^2.119.2","colyseus":"^0.18.12"}}

@@ -50,9 +50,9 @@ class SchoolRoom extends Room {
   maxClients = MAX_PLAYERS + 3; // + ครู
   patchRate = 100;
 
-  onCreate(options) {
+  async onCreate(options) {
     if (!isTeacher(options?.teacher)) throw new Error('เฉพาะครูเท่านั้นที่สร้างห้องได้');
-    const bank = store.getBank(options.bank);
+    const bank = await store.getBank(options.bank);
     if (!bank || !bank.questions.length) throw new Error('ไม่พบชุดคำถาม');
     this.roomId = newCode();
     this.bankData = bank;
@@ -259,25 +259,26 @@ class SchoolRoom extends Room {
   saveProfile(id) {
     const p = this.state.players.get(id), meta = this.meta.get(id);
     if (!p || !meta?.studentCode) return;
-    store.saveProfile(meta.studentCode, { coins: p.wallet, owned: meta.owned, equip: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit, veh: meta.lastVeh || 0 } });
+    store.saveProfile(meta.studentCode, { coins: p.wallet, owned: meta.owned, equip: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit, veh: meta.lastVeh || 0 } })
+      .catch((e) => console.error('บันทึกโปรไฟล์ไม่สำเร็จ', e.message));
   }
 
-  endRound() {
+  async endRound() {
     if (this.state.phase !== 'play') return;
     this.state.phase = 'ended';
     const players = [];
     this.state.players.forEach((p, id) => players.push({ id, name: p.name, solved: p.solved, wrong: p.wrong, coins: p.coins, code: this.meta.get(id)?.studentCode || null }));
     players.sort((a, b) => b.solved - a.solved || b.coins - a.coins || a.wrong - b.wrong);
     const questions = this.bankData.questions.map((q) => ({ id: q.id, q: q.q, topic: q.topic, ...(this.qstats.get(q.id) || { right: 0, wrong: 0 }) }));
-    const resultId = store.saveResult({ code: this.roomId, bank: this.bankData.title, minutes: this.minutes, startedAt: this.startedAt, endedAt: Date.now(), players: players.map(({ id, ...r }) => r), questions });
+    const resultId = await store.saveResult({ code: this.roomId, bank: this.bankData.title, minutes: this.minutes, startedAt: this.startedAt, endedAt: Date.now(), players: players.map(({ id, ...r }) => r), questions });
     // เหรียญสะสมข้ามรอบสำหรับคนที่มีรหัสนักเรียน
-    store.updateStudents(players.filter((p) => p.code).map((p) => ({ code: p.code, solved: p.solved })));
+    await store.updateStudents(players.filter((p) => p.code).map((p) => ({ code: p.code, solved: p.solved }))).catch((e) => console.error('บันทึกสถิตินักเรียนไม่สำเร็จ', e.message));
     this.state.players.forEach((p, id) => this.saveProfile(id));
     this.broadcast('results', { resultId, top: players.slice(0, 3).map((p) => ({ name: p.name, solved: p.solved, coins: p.coins })), ranks: players.map((p, i) => ({ id: p.id, rank: i + 1 })), total: players.length });
     console.log(`[${this.roomId}] จบรอบ · ${players.length} คน · บันทึก ${resultId}`);
   }
 
-  onJoin(client, options) {
+  async onJoin(client, options) {
     // ครู: ไม่มีตัวละคร แค่ดูและสั่งการ
     if (isTeacher(options?.teacher)) {
       this.teachers.add(client.sessionId);
@@ -287,7 +288,7 @@ class SchoolRoom extends Room {
     if (this.state.players.size >= MAX_PLAYERS) throw new Error('ห้องเต็มแล้ว');
     let name = clean(options?.name), studentCode = null, stu = null;
     if (options?.studentCode) {
-      const s = store.findStudent(options.studentCode);
+      const s = await store.findStudent(options.studentCode);
       if (!s) throw new Error('ไม่พบรหัสนักเรียนนี้');
       // รหัสเดียวกันเข้าซ้ำ: เตะตัวเก่าออก (เช่นเปลี่ยนเครื่อง)
       for (const [id, mt] of this.meta) if (mt.studentCode === s.code) { this.clients.find((x) => x.sessionId === id)?.leave(4101); this.removePlayer(id); }
@@ -337,8 +338,10 @@ class SchoolRoom extends Room {
 }
 
 // ── เริ่มเซิร์ฟเวอร์ ──
-store.seedBanks();
-const firstPin = store.ensureTeacherPin();
+console.log(`ที่เก็บข้อมูล: ${store.backend === 'supabase' ? 'Supabase (ฐานข้อมูลบนคลาวด์)' : 'ไฟล์ในโฟลเดอร์ data/'}`);
+const seeded = await store.seedBanks();
+if (seeded) console.log(`ใส่คลังคำถามเริ่มต้น ${seeded} ชุด`);
+const firstPin = await store.ensureTeacherPin(process.env.TEACHER_PIN);
 if (firstPin) console.log(`\n🔑 รหัสครู (จดไว้ ใช้เข้าหน้าครู): ${firstPin}\n`);
 
 const port = Number(process.env.PORT || 2567);

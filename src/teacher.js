@@ -1,7 +1,7 @@
 // หน้าครู: ห้องเรียนสด · คลังคำถาม · รายชื่อนักเรียน · ผลย้อนหลัง · ตั้งค่า
 import { Client } from '@colyseus/sdk';
 import QRCode from 'qrcode';
-import { SERVER_URL, API_URL } from './config.js';
+import { SERVER_URL, API_URL, wakeServer } from './config.js';
 import { toCSV, parseCSV, download, bankToRows, rowsToQuestions, TEMPLATE_ROWS } from './csv.js';
 
 const $ = (id) => document.getElementById(id);
@@ -34,6 +34,14 @@ async function api(path, opts = {}) {
 // ── เข้าสู่ระบบ ──
 async function login() {
   $('login-msg').textContent = '';
+  $('login-msg').className = 'msg ok';
+  $('btn-login').disabled = true;
+  // เซิร์ฟเวอร์ฟรีอาจหลับอยู่: ปลุกก่อน
+  const awake = await wakeServer((sec) => { $('login-msg').textContent = `กำลังปลุกเซิร์ฟเวอร์... ${sec} วินาที (ครั้งแรกของวันอาจนานถึง 1 นาที)`; });
+  $('btn-login').disabled = false;
+  $('login-msg').className = 'msg';
+  $('login-msg').textContent = '';
+  if (!awake) { $('login-msg').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง'; return; }
   try {
     const { token: t } = await api('/login', { method: 'POST', body: { pin: $('pin').value.trim() } });
     token = t;

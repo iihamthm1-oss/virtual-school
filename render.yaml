@@ -1,0 +1,20 @@
+# Render Blueprint: เซิร์ฟเวอร์ออนไลน์ของเกม (Colyseus + API หน้าครู)
+# ใน Render เลือก New → Blueprint → เลือก repo นี้ แล้วกรอกค่าที่ขึ้นว่า "sync: false"
+services:
+  - type: web
+    name: virtual-school-server
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: cd server && npm ci
+    startCommand: cd server && node start.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SUPABASE_URL           # Project URL จาก Supabase (Settings → API)
+        sync: false
+      - key: SUPABASE_SERVICE_KEY   # service_role key จาก Supabase — เป็นความลับ ห้ามใส่ในหน้าเว็บ
+        sync: false
+      - key: TEACHER_PIN            # รหัสครู 6 หลักครั้งแรก (ถ้าย้ายข้อมูลจากเครื่องแล้ว จะใช้รหัสเดิม)
+        sync: false
