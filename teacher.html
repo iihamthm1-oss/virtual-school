@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>หน้าครู · โรงเรียนเสมือน 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/teacher.css" />
+</head>
+<body>
+  <!-- เข้าสู่ระบบ -->
+  <div id="login" class="login">
+    <div class="card login-card">
+      <div class="logo">👩‍🏫</div>
+      <h1>หน้าครู</h1>
+      <p class="muted">โรงเรียนเสมือน 3D</p>
+      <label for="pin">รหัสครู 6 หลัก</label>
+      <input id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" />
+      <button id="btn-login" class="btn primary wide">เข้าสู่ระบบ</button>
+      <div id="login-msg" class="msg"></div>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="top">
+      <div class="brand">🏫 โรงเรียนเสมือน 3D <span class="muted">· หน้าครู</span></div>
+      <nav class="tabs">
+        <button data-tab="live" class="active">🎮 ห้องเรียนสด</button>
+        <button data-tab="banks">📚 คลังคำถาม</button>
+        <button data-tab="students">🧑‍🎓 รายชื่อนักเรียน</button>
+        <button data-tab="results">📊 ผลย้อนหลัง</button>
+        <button data-tab="settings">⚙️ ตั้งค่า</button>
+      </nav>
+      <button id="btn-logout" class="btn ghost small">ออกจากระบบ</button>
+    </header>
+
+    <!-- ห้องเรียนสด -->
+    <section id="tab-live" class="tab">
+      <div id="live-setup" class="card setup">
+        <h2>เปิดห้องเรียนใหม่</h2>
+        <div class="row">
+          <label>ชุดคำถาม<select id="setup-bank"></select></label>
+          <label>เวลาต่อรอบ<select id="setup-minutes">
+            <option value="10">10 นาที</option><option value="15">15 นาที</option><option value="20">20 นาที</option>
+            <option value="30" selected>30 นาที</option><option value="40">40 นาที</option><option value="45">45 นาที</option><option value="60">60 นาที</option>
+          </select></label>
+        </div>
+        <button id="btn-open" class="btn primary">🏫 สร้างห้อง</button>
+        <div id="setup-msg" class="msg"></div>
+      </div>
+
+      <div id="live-room" class="live hidden">
+        <aside class="card join-card">
+          <div class="muted">รหัสห้อง</div>
+          <div id="room-code" class="code"></div>
+          <img id="qr" alt="QR เข้าห้อง" />
+          <div class="link-row"><input id="room-link" readonly /><button id="btn-copy" class="btn small">คัดลอก</button></div>
+          <div id="lan-hint" class="hint hidden"></div>
+          <div class="phase-row"><span id="phase" class="badge"></span><span id="timer" class="timer"></span></div>
+          <div class="muted small" id="bank-name"></div>
+          <div class="controls">
+            <button id="btn-start" class="btn primary">▶ เริ่มรอบ</button>
+            <button id="btn-extend" class="btn">＋5 นาที</button>
+            <button id="btn-end" class="btn warn">⏹ จบรอบ</button>
+          </div>
+          <button id="btn-close" class="btn ghost small">ปิดห้อง</button>
+        </aside>
+        <div class="live-main">
+          <div class="card">
+            <div class="card-head">
+              <h2>นักเรียนในห้อง <span id="count" class="pill">0</span></h2>
+              <button id="btn-export-live" class="btn small">⬇️ ส่งออก Excel</button>
+            </div>
+            <table class="grid">
+              <thead><tr><th>#</th><th>ชื่อ</th><th>✅ ทำได้</th><th>❌ ผิด</th><th>💰 เหรียญ</th><th>สถานะ</th><th></th></tr></thead>
+              <tbody id="players"></tbody>
+            </table>
+            <div id="empty-players" class="empty">ยังไม่มีนักเรียน ให้นักเรียนสแกน QR หรือใส่รหัสห้อง</div>
+          </div>
+          <div class="card">
+            <h2>ข้อที่นักเรียนตอบผิดบ่อย</h2>
+            <ol id="hard" class="hard"></ol>
+            <div id="empty-hard" class="empty">ยังไม่มีข้อมูล</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- คลังคำถาม -->
+    <section id="tab-banks" class="tab hidden">
+      <div class="split">
+        <div class="card side">
+          <div class="card-head"><h2>ชุดคำถาม</h2></div>
+          <ul id="bank-list" class="list"></ul>
+          <button id="btn-new-bank" class="btn wide">＋ สร้างชุดใหม่</button>
+          <button id="btn-template" class="btn ghost wide small">⬇️ ไฟล์ตัวอย่างสำหรับ Excel / Google Sheet</button>
+        </div>
+        <div class="card main" id="bank-editor">
+          <div class="empty">เลือกชุดคำถามทางซ้าย</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- รายชื่อนักเรียน -->
+    <section id="tab-students" class="tab hidden">
+      <div class="split">
+        <div class="card side">
+          <h2>เพิ่มนักเรียน</h2>
+          <label>ห้อง / ชั้น<input id="stu-class" placeholder="เช่น ป.5/1" /></label>
+          <label>ชื่อ (บรรทัดละ 1 คน)<textarea id="stu-names" rows="10" placeholder="มะปราง&#10;ต้นกล้า&#10;น้ำใส"></textarea></label>
+          <button id="btn-add-students" class="btn primary wide">สร้างรหัสนักเรียน</button>
+          <p class="muted small">นักเรียนใส่รหัสนี้แทนชื่อตอนเข้าเกม เหรียญจะสะสมข้ามรอบ ไม่ต้องใช้อีเมลหรือข้อมูลส่วนตัว</p>
+        </div>
+        <div class="card main">
+          <div class="card-head">
+            <h2>รายชื่อ <span id="stu-count" class="pill">0</span></h2>
+            <div><select id="stu-filter"></select> <button id="btn-print" class="btn small">🖨️ พิมพ์บัตรรหัส</button></div>
+          </div>
+          <table class="grid">
+            <thead><tr><th>รหัส</th><th>ชื่อ</th><th>ห้อง</th><th>💰 สะสม</th><th>✅ รวม</th><th>รอบ</th><th></th></tr></thead>
+            <tbody id="students"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="print-cards" class="print-cards"></div>
+    </section>
+
+    <!-- ผลย้อนหลัง -->
+    <section id="tab-results" class="tab hidden">
+      <div class="split">
+        <div class="card side"><h2>รอบที่ผ่านมา</h2><ul id="result-list" class="list"></ul></div>
+        <div class="card main" id="result-view"><div class="empty">เลือกรอบทางซ้าย</div></div>
+      </div>
+    </section>
+
+    <!-- ตั้งค่า -->
+    <section id="tab-settings" class="tab hidden">
+      <div class="card narrow">
+        <h2>เปลี่ยนรหัสครู</h2>
+        <label>รหัสใหม่ 6 หลัก<input id="new-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" /></label>
+        <button id="btn-pin" class="btn primary">บันทึก</button>
+        <div id="pin-msg" class="msg"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- แก้ไขคำถาม -->
+  <div id="q-modal" class="modal hidden">
+    <div class="card modal-card">
+      <h2 id="q-modal-title">แก้ไขคำถาม</h2>
+      <div class="row">
+        <label>หมวด<select id="f-topic"><option value="computing">วิทยาการคำนวณ</option><option value="general">ความรู้ทั่วไป</option></select></label>
+        <label>ประเภท<select id="f-type"><option value="mc">ปรนัย 4 ตัวเลือก</option><option value="tf">ถูก / ผิด</option><option value="order">เรียงลำดับขั้นตอน</option><option value="code">อ่านโค้ด</option></select></label>
+      </div>
+      <label>คำถาม<textarea id="f-q" rows="2"></textarea></label>
+      <label id="f-code-wrap">โค้ด<textarea id="f-code" rows="4" class="mono"></textarea></label>
+      <div id="f-choices-wrap"><div class="label">ตัวเลือก (เลือกวงกลมหน้าคำตอบที่ถูก)</div><div id="f-choices"></div></div>
+      <div id="f-tf-wrap" class="row"><label class="radio"><input type="radio" name="f-tf" value="true" /> ถูก</label><label class="radio"><input type="radio" name="f-tf" value="false" /> ผิด</label></div>
+      <label id="f-items-wrap">ขั้นตอน เรียงลำดับที่ถูกต้อง (บรรทัดละ 1 ขั้น 2–6 ขั้น)<textarea id="f-items" rows="5"></textarea></label>
+      <label>คำใบ้ (แสดงตอนตอบผิด อย่าเฉลยตรง ๆ)<input id="f-hint" /></label>
+      <div class="msg" id="f-msg"></div>
+      <div class="modal-foot"><button id="f-cancel" class="btn ghost">ยกเลิก</button><button id="f-save" class="btn primary">ตกลง</button></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script type="module" src="/src/teacher.js"></script>
+</body>
+</html>

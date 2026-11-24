@@ -1,0 +1,189 @@
+:root {
+  --ink: #3b3355;
+  --ink-soft: #6f6890;
+  --card: #fffdfa;
+  --line: #ece6f5;
+  --primary: #7c6cf0;
+  --primary-2: #9d8ff7;
+  --good: #4cc38a;
+  --bad: #f2727f;
+  --comp: #4fc3e8;
+  --gen: #ff8fb8;
+  --shadow: 0 10px 30px rgba(59, 51, 85, 0.18);
+  font-family: 'Mitr', system-ui, sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #cdeaf7; touch-action: none; user-select: none; -webkit-user-select: none; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+.hidden { display: none !important; }
+button { font-family: inherit; color: inherit; cursor: pointer; border: 0; }
+
+/* การ์ดและปุ่ม */
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; z-index: 20; }
+#start { background: linear-gradient(160deg, rgba(196, 232, 250, 0.55), rgba(255, 230, 240, 0.65)); backdrop-filter: blur(3px); }
+.card { background: var(--card); border-radius: 24px; box-shadow: var(--shadow); padding: 24px; width: min(520px, 100%); }
+.btn { border-radius: 14px; padding: 12px 20px; font-size: 17px; font-weight: 500; background: #f1edfb; transition: transform 0.08s, background 0.15s; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: linear-gradient(180deg, var(--primary-2), var(--primary)); color: #fff; box-shadow: 0 4px 0 #5d4ed0; }
+.btn.primary:disabled { opacity: 0.45; cursor: default; }
+.btn.big { width: 100%; font-size: 20px; padding: 14px; margin-top: 14px; }
+.icon-btn { background: #f3effb; width: 38px; height: 38px; border-radius: 12px; font-size: 17px; flex: none; }
+
+.start-card { text-align: center; }
+.start-card .logo { font-size: 54px; line-height: 1; }
+.start-card h1 { margin: 6px 0 2px; font-size: 30px; font-weight: 700; color: var(--primary); }
+.start-card .sub { margin: 0 0 18px; color: var(--ink-soft); }
+.start-card label { display: block; text-align: left; font-weight: 500; margin-bottom: 6px; }
+.start-card input { width: 100%; font: inherit; font-size: 18px; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); outline: none; }
+.start-card input:focus { border-color: var(--primary-2); }
+.howto { margin-top: 16px; font-size: 13px; color: var(--ink-soft); text-align: left; display: grid; gap: 4px; }
+
+/* แถบบน */
+#hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 10; }
+.pill { background: rgba(255, 253, 250, 0.92); border-radius: 999px; padding: 7px 14px; font-weight: 600; box-shadow: 0 4px 14px rgba(59, 51, 85, 0.14); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.coin.bump { animation: bump 0.5s; }
+@keyframes bump { 30% { transform: scale(1.25); background: #fff3c4; } }
+
+/* แผงภารกิจ */
+#quest-panel { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; width: 270px; z-index: 10; background: rgba(255, 253, 250, 0.94); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+.panel-head { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 16px; font-weight: 600; background: none; }
+.count { background: var(--primary); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 13px; margin-left: 4px; }
+.chev { transition: transform 0.2s; }
+#quest-panel.collapsed .chev { transform: rotate(-90deg); }
+#quest-panel.collapsed #quest-list { display: none; }
+#quest-list { list-style: none; margin: 0; padding: 0 10px 10px; display: grid; gap: 8px; }
+#quest-list li { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 9px 12px; cursor: pointer; display: grid; gap: 2px; transition: border-color 0.15s; }
+#quest-list li.tracked { border-color: var(--primary-2); box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.15); }
+#quest-list li .row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+#quest-list li .where { font-weight: 600; font-size: 14px; }
+#quest-list li .meta { font-size: 12px; color: var(--ink-soft); }
+#quest-list li .cool { color: var(--bad); font-weight: 600; }
+.chip { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; color: #fff; background: var(--gen); white-space: nowrap; }
+.chip.computing { background: var(--comp); }
+.empty { font-size: 14px; color: var(--ink-soft); padding: 6px 4px; }
+
+/* ปุ่มตอบภารกิจ */
+#prompt { position: fixed; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; background: linear-gradient(180deg, #ffd66b, #ffb84d); color: #5a3a00; font-size: 18px; font-weight: 600; padding: 14px 26px; border-radius: 999px; box-shadow: 0 5px 0 #e0952c, var(--shadow); animation: float 1.4s ease-in-out infinite; }
+#prompt.cooling { background: #e9e5f3; color: var(--ink-soft); box-shadow: 0 5px 0 #cfc8e3; animation: none; }
+@keyframes float { 50% { transform: translate(-50%, -5px); } }
+
+/* ปุ่มสัมผัส */
+#touch { position: fixed; inset: auto 0 0 0; height: 0; z-index: 11; }
+#joystick { position: fixed; left: max(28px, env(safe-area-inset-left)); bottom: max(34px, env(safe-area-inset-bottom)); width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); border: 3px solid rgba(255, 255, 255, 0.7); touch-action: none; }
+#joystick .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 255, 255, 0.95); box-shadow: 0 4px 10px rgba(59, 51, 85, 0.25); pointer-events: none; }
+#btn-jump { position: fixed; right: max(28px, env(safe-area-inset-right)); bottom: max(44px, env(safe-area-inset-bottom)); width: 78px; height: 78px; border-radius: 50%; font-size: 32px; background: rgba(255, 255, 255, 0.85); box-shadow: var(--shadow); touch-action: none; }
+
+/* หน้าต่างคำถาม */
+#modal { background: rgba(59, 51, 85, 0.35); backdrop-filter: blur(2px); }
+.q-card { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; animation: pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } }
+.q-head { display: flex; align-items: center; gap: 8px; }
+.q-head .place { flex: 1; font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-card h2 { font-size: 21px; font-weight: 600; margin: 16px 0 12px; line-height: 1.5; }
+#q-code { background: #2f2a45; color: #f3f0ff; font-family: 'Mitr', ui-monospace, monospace; font-size: 16px; line-height: 1.6; padding: 14px 16px; border-radius: 14px; margin: 0 0 14px; white-space: pre; overflow-x: auto; }
+#q-body { display: grid; gap: 10px; }
+.choice { text-align: left; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 17px; display: flex; gap: 10px; align-items: center; transition: border-color 0.12s, background 0.12s; }
+.choice:hover:not(:disabled) { border-color: var(--primary-2); }
+.choice .key { flex: none; width: 30px; height: 30px; border-radius: 10px; background: #f1edfb; display: grid; place-items: center; font-weight: 600; color: var(--primary); }
+.choice.right { border-color: var(--good); background: #eafaf2; }
+.choice.wrong { border-color: var(--bad); background: #fdeef0; }
+.choice:disabled { cursor: default; }
+.tf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tf .choice { justify-content: center; font-size: 20px; padding: 18px; }
+
+.order-label { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.order-slots, .order-pool { display: grid; gap: 8px; }
+.slot { border: 2px dashed var(--line); border-radius: 14px; padding: 10px 12px; min-height: 48px; display: flex; gap: 10px; align-items: center; font-size: 16px; }
+.slot .n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 14px; }
+.slot.filled { border-style: solid; border-color: var(--primary-2); background: #f6f3ff; cursor: pointer; }
+.slot.empty .n { background: #d9d3ea; }
+.slot.right { border-color: var(--good); background: #eafaf2; }
+.slot.wrong { border-color: var(--bad); background: #fdeef0; }
+
+#q-feedback { margin-top: 14px; border-radius: 14px; padding: 12px 14px; font-size: 16px; line-height: 1.5; }
+#q-feedback.good { background: #eafaf2; color: #23774f; }
+#q-feedback.bad { background: #fdeef0; color: #a63a47; }
+.q-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+/* แจ้งเตือน */
+#toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 30; display: grid; gap: 6px; pointer-events: none; }
+.toast { background: rgba(59, 51, 85, 0.9); color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 15px; animation: toast 2.4s forwards; text-align: center; }
+@keyframes toast { 0% { opacity: 0; transform: translateY(-8px); } 10%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+#banner { position: fixed; inset: 0; display: grid; place-items: center; z-index: 25; pointer-events: none; }
+#banner .inner { background: linear-gradient(135deg, #fff6d6, #ffe0ef); border-radius: 26px; padding: 26px 34px; text-align: center; box-shadow: var(--shadow); animation: pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
+#banner .big { font-size: 30px; font-weight: 700; color: var(--primary); }
+
+/* มือถือ */
+@media (max-width: 720px) {
+  #quest-panel { width: 210px; left: 8px; top: max(58px, env(safe-area-inset-top)); }
+  #hud { gap: 5px; top: max(8px, env(safe-area-inset-top)); }
+  .pill { padding: 6px 10px; font-size: 14px; }
+  .q-card { padding: 18px; }
+  .q-card h2 { font-size: 18px; }
+  .choice { font-size: 15px; padding: 10px 12px; }
+  #prompt { bottom: 190px; font-size: 16px; }
+}
+.coin-ic { display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4b8, #ffcf3f 55%, #e8a317); box-shadow: inset 0 0 0 2px #e8a317; vertical-align: -2px; margin-right: 6px; }
+
+.view-btn { cursor: pointer; }
+.view-btn.on { background: #7c6cf0; color: #fff; }
+@media (max-width: 720px) { .view-btn { font-size: 13px; } }
+@media (max-width: 480px) {
+  #hud { gap: 4px; }
+  .pill { padding: 5px 8px; font-size: 13px; }
+  .view-btn .tx { display: none; }
+}
+/* แถบบนชิดขวา จะได้ไม่ทับแผงภารกิจด้านซ้าย */
+#hud { left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; }
+
+/* หน้าเริ่ม: ห้องออนไลน์ */
+.start-card label.mt { margin-top: 14px; }
+.room-row { display: flex; gap: 8px; }
+.room-row input { flex: 1; letter-spacing: 6px; text-align: center; font-size: 22px !important; }
+.room-row .btn { white-space: nowrap; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 13px; margin: 14px 0 0; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+#btn-create { margin-top: 10px; }
+.link-btn { background: none; color: var(--ink-soft); text-decoration: underline; margin-top: 10px; font-size: 14px; }
+.start-msg { min-height: 22px; margin-top: 8px; font-size: 14px; color: var(--bad); }
+.start-msg.ok { color: var(--primary); }
+button:disabled { opacity: 0.5; cursor: default; }
+.pill.room { cursor: pointer; background: #efeafe; }
+
+/* แชท */
+#btn-chat { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 12; width: 58px; height: 58px; border-radius: 50%; font-size: 26px; background: #fff; box-shadow: var(--shadow); }
+#chat-panel { position: fixed; right: 16px; bottom: 84px; z-index: 13; width: min(340px, calc(100vw - 32px)); background: rgba(255,253,250,0.97); border-radius: 18px; box-shadow: var(--shadow); padding: 10px; display: grid; gap: 8px; }
+#chat-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#chat-presets button { background: #f3effb; border-radius: 12px; padding: 8px; font-size: 14px; text-align: left; }
+#chat-emojis { display: flex; justify-content: space-between; }
+#chat-emojis button { background: #f3effb; border-radius: 12px; width: 36px; height: 36px; font-size: 20px; }
+#chat-panel button:active { transform: scale(0.95); }
+#chat-log { position: fixed; left: 12px; bottom: 16px; z-index: 9; display: grid; gap: 4px; pointer-events: none; max-width: 300px; }
+#chat-log .line { background: rgba(59,51,85,0.75); color: #fff; padding: 4px 10px; border-radius: 10px; font-size: 13px; animation: toast 6s forwards; width: fit-content; }
+@media (pointer: coarse) {
+  #btn-chat { bottom: 136px; right: max(36px, env(safe-area-inset-right)); width: 54px; height: 54px; }
+  #chat-panel { bottom: 200px; }
+  #chat-log { left: 12px; bottom: 190px; }
+}
+
+/* รหัสนักเรียน */
+.opt { font-weight: 400; font-size: 12px; color: var(--ink-soft); }
+.stucode { text-transform: uppercase; letter-spacing: 4px; text-align: center; }
+.wait-banner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 10; background: #fff3c4; color: #6a4c00; padding: 8px 18px; border-radius: 999px; font-weight: 500; box-shadow: var(--shadow); white-space: nowrap; font-size: 15px; }
+@media (max-width: 720px) { .wait-banner { top: 110px; font-size: 13px; } }
+.pill.timer-low { background: #ffe1e4; color: #b3263a; }
+
+/* สรุปผลจบรอบ */
+#results { background: rgba(59, 51, 85, 0.4); z-index: 22; }
+.results-card { text-align: center; width: min(520px, 100%); animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.res-title { font-size: 28px; font-weight: 700; color: var(--primary); }
+.podium { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; gap: 8px; margin: 18px 0 10px; min-height: 190px; }
+.podium .col { display: grid; gap: 6px; justify-items: center; }
+.podium .who { font-weight: 600; font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium .score { font-size: 12px; color: var(--ink-soft); }
+.podium .block { width: 100%; border-radius: 12px 12px 0 0; display: grid; place-items: center; font-size: 30px; color: #fff; font-weight: 700; }
+.podium .p1 .block { height: 120px; background: linear-gradient(180deg, #ffd66b, #f2b93a); }
+.podium .p2 .block { height: 88px; background: linear-gradient(180deg, #d9dde8, #b6bccc); }
+.podium .p3 .block { height: 64px; background: linear-gradient(180deg, #f0b48c, #d98c5f); }
+.my-result { background: #f3effb; border-radius: 14px; padding: 12px; margin: 8px 0 14px; font-size: 16px; }
