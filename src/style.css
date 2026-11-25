@@ -237,3 +237,29 @@ button:disabled { opacity: 0.5; cursor: default; }
 #q-seg button.active { background: #fff; color: var(--primary); box-shadow: 0 2px 6px rgba(59,51,85,0.12); }
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 16px; padding: 8px 0; cursor: pointer; }
 .toggle input { width: 22px; height: 22px; accent-color: var(--primary); }
+
+/* ร้านค้า/ตู้เสื้อผ้า แบบมีหุ่นตัวอย่าง */
+.locker-card.wide { width: min(960px, 100%); }
+.locker-body { display: grid; grid-template-columns: minmax(240px, 34%) 1fr; gap: 16px; align-items: start; }
+.stage { position: sticky; top: 0; background: linear-gradient(180deg, #f6f2ff, #e9f6ff); border-radius: 18px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 430px; cursor: grab; touch-action: none; }
+.stage canvas:active { cursor: grabbing; }
+.stage-cap { text-align: center; font-size: 13px; color: var(--ink-soft); padding: 6px 8px 10px; min-height: 30px; }
+.locker-side { min-width: 0; }
+.items { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.item { cursor: pointer; transition: border-color 0.15s, transform 0.1s; }
+.item.trying { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.15); }
+.item .thumb, .pic-opt img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 12px; background: linear-gradient(180deg, #f6f2ff, #eef8ff); user-select: none; }
+.pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.pics.small { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); }
+.pic-opt { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 6px; display: grid; justify-items: center; gap: 3px; font-size: 13px; line-height: 1.3; text-align: center; }
+.pic-opt.on { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.15); }
+.pic-opt.locked { opacity: 0.6; cursor: default; }
+.pic-opt.locked img { filter: grayscale(0.6); }
+.pic-opt .lock { font-size: 11px; color: var(--ink-soft); }
+.pic-opt .walk { width: 100%; aspect-ratio: 1; display: grid; place-items: center; font-size: 44px; background: linear-gradient(180deg, #f6f2ff, #eef8ff); border-radius: 12px; }
+@media (max-width: 720px) {
+  .locker-body { grid-template-columns: 1fr; }
+  .stage { position: static; }
+  .stage canvas { height: 240px; }
+}

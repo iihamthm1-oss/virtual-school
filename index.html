@@ -2,6 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🏫%3C/text%3E%3C/svg%3E" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>โรงเรียนห้องสื่อครูอัง 3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -82,24 +83,34 @@
 
   <!-- ร้านค้า -->
   <div id="shop" class="overlay hidden">
-    <div class="card locker-card">
+    <div class="card locker-card wide">
       <div class="locker-head"><h2>🛍️ ร้านค้าโรงเรียน</h2><span class="pill wallet">💰 <span id="shop-wallet">0</span></span><button class="icon-btn" data-close-locker>✕</button></div>
-      <div class="seg"><button data-tab="outfit" class="active">👕 ชุด</button><button data-tab="vehicle">🚲 พาหนะ</button></div>
-      <div id="shop-items" class="items"></div>
-      <div id="shop-msg" class="shop-msg"></div>
-      <div class="muted-note">ตอบภารกิจถูกเพื่อรับเหรียญ · ใช้รหัสนักเรียนเพื่อเก็บของไว้ใช้รอบหน้า</div>
+      <div class="locker-body">
+        <div class="stage"><canvas id="shop-preview"></canvas><div id="shop-try" class="stage-cap"></div></div>
+        <div class="locker-side">
+          <div class="seg"><button data-tab="outfit" class="active">👕 ชุด</button><button data-tab="vehicle">🚲 พาหนะ</button></div>
+          <div id="shop-items" class="items"></div>
+          <div id="shop-msg" class="shop-msg"></div>
+          <div class="muted-note">ตอบภารกิจถูกเพื่อรับเหรียญ · ใช้รหัสนักเรียนเพื่อเก็บของไว้ใช้รอบหน้า</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- ตู้เสื้อผ้า -->
   <div id="wardrobe" class="overlay hidden">
-    <div class="card locker-card">
+    <div class="card locker-card wide">
       <div class="locker-head"><h2>👕 แต่งตัว</h2><button class="icon-btn" data-close-locker>✕</button></div>
-      <div class="wd-sec"><div class="wd-label">ทรงผม</div><div id="wd-hair" class="opts"></div></div>
-      <div class="wd-sec"><div class="wd-label">สีผม</div><div id="wd-haircolor" class="swatches"></div></div>
-      <div class="wd-sec"><div class="wd-label">สีผิว</div><div id="wd-skin" class="swatches"></div></div>
-      <div class="wd-sec"><div class="wd-label">ชุด</div><div id="wd-outfit" class="cards"></div></div>
-      <div class="wd-sec"><div class="wd-label">พาหนะ <span class="muted-note">(ขี่ได้เฉพาะนอกอาคาร)</span></div><div id="wd-vehicle" class="cards"></div></div>
+      <div class="locker-body">
+        <div class="stage"><canvas id="wd-preview"></canvas><div class="stage-cap">เลือกแล้วเปลี่ยนทันที · ลากเพื่อหมุนดู</div></div>
+        <div class="locker-side">
+          <div class="wd-sec"><div class="wd-label">ชุด</div><div id="wd-outfit" class="pics"></div></div>
+          <div class="wd-sec"><div class="wd-label">ทรงผม</div><div id="wd-hair" class="pics small"></div></div>
+          <div class="wd-sec"><div class="wd-label">สีผม</div><div id="wd-haircolor" class="swatches"></div></div>
+          <div class="wd-sec"><div class="wd-label">สีผิว</div><div id="wd-skin" class="swatches"></div></div>
+          <div class="wd-sec"><div class="wd-label">พาหนะ <span class="muted-note">(ขี่ได้เฉพาะนอกอาคาร)</span></div><div id="wd-vehicle" class="pics"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 

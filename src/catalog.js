@@ -6,16 +6,16 @@ export const HAIR_STYLES = ['สั้นเรียบ', 'ทรงหนา�
 
 // ชุด: kind = shorts (กางเกงขาสั้น) | skirt (กระโปรง) | long (กางเกงขายาว)
 export const OUTFITS = [
-  { id: 0, name: 'ชุดนักเรียน (กางเกง)', icon: '👕', price: 0, shirt: '#ffffff', bottom: '#2f3a6b', kind: 'shorts' },
-  { id: 1, name: 'ชุดนักเรียน (กระโปรง)', icon: '👗', price: 0, shirt: '#ffffff', bottom: '#2f3a6b', kind: 'skirt' },
-  { id: 2, name: 'ชุดพละ', icon: '🏃', price: 0, shirt: '#ff8fab', bottom: '#3b3355', kind: 'shorts', extra: 'stripe' },
-  { id: 3, name: 'ชุดลูกเสือ', icon: '⚜️', price: 30, shirt: '#c8a26a', bottom: '#a8844e', kind: 'shorts', extra: 'scout' },
-  { id: 4, name: 'ชุดไทย', icon: '🌺', price: 50, shirt: '#f2c94c', bottom: '#a5463e', kind: 'shorts', extra: 'sash' },
-  { id: 5, name: 'ชุดเชฟ', icon: '👨‍🍳', price: 60, shirt: '#ffffff', bottom: '#3b3355', kind: 'long', extra: 'chef' },
-  { id: 6, name: 'ชุดหมอ', icon: '🩺', price: 60, shirt: '#ffffff', bottom: '#6c8ebf', kind: 'long', extra: 'doctor' },
-  { id: 7, name: 'ชุดนักบินอวกาศ', icon: '🚀', price: 100, shirt: '#f3f3f7', bottom: '#f3f3f7', kind: 'long', extra: 'astro' },
-  { id: 8, name: 'ชุดซูเปอร์ฮีโร่', icon: '🦸', price: 120, shirt: '#4f6fe8', bottom: '#d9333f', kind: 'long', extra: 'hero' },
-  { id: 9, name: 'ชุดหมีน้อย', icon: '🧸', price: 120, shirt: '#b07d5a', bottom: '#b07d5a', kind: 'long', extra: 'bear' },
+  { id: 0, style: 'boy', name: 'ชุดนักเรียน (กางเกง)', icon: '👕', price: 0, shirt: '#ffffff', bottom: '#2f3a6b', kind: 'shorts' },
+  { id: 1, style: 'girl', name: 'ชุดนักเรียน (กระโปรง)', icon: '👗', price: 0, shirt: '#ffffff', bottom: '#2f3a6b', kind: 'skirt' },
+  { id: 2, style: 'pe', name: 'ชุดพละ', icon: '🏃', price: 0, shirt: '#ff8fab', bottom: '#3b3355', kind: 'shorts', extra: 'stripe' },
+  { id: 3, style: 'scout', name: 'ชุดลูกเสือ', icon: '⚜️', price: 30, shirt: '#c8a26a', bottom: '#a8844e', kind: 'shorts', extra: 'scout' },
+  { id: 4, style: 'thai', name: 'ชุดไทย', icon: '🌺', price: 50, shirt: '#f2c94c', bottom: '#a5463e', kind: 'shorts', extra: 'sash' },
+  { id: 5, style: 'chef', name: 'ชุดเชฟ', icon: '👨‍🍳', price: 60, shirt: '#ffffff', bottom: '#3b3355', kind: 'long', extra: 'chef' },
+  { id: 6, style: 'doctor', name: 'ชุดหมอ', icon: '🩺', price: 60, shirt: '#ffffff', bottom: '#6c8ebf', kind: 'long', extra: 'doctor' },
+  { id: 7, style: 'astro', name: 'ชุดนักบินอวกาศ', icon: '🚀', price: 100, shirt: '#f3f3f7', bottom: '#f3f3f7', kind: 'long', extra: 'astro' },
+  { id: 8, style: 'hero', name: 'ชุดซูเปอร์ฮีโร่', icon: '🦸', price: 120, shirt: '#4f6fe8', bottom: '#d9333f', kind: 'long', extra: 'hero' },
+  { id: 9, style: 'bear', name: 'ชุดหมีน้อย', icon: '🧸', price: 120, shirt: '#b07d5a', bottom: '#b07d5a', kind: 'long', extra: 'bear' },
 ];
 
 // พาหนะ: speed = ความเร็วสูงสุด (เดิน 6.5 วิ่ง 10) · stand = ยืนขี่ · seats = จำนวนที่นั่ง
