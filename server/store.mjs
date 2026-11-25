@@ -13,8 +13,10 @@ const safeId = (id) => String(id).replace(/[^a-z0-9-]/gi, '').slice(0, 40);
 const hashPin = (pin, salt) => scryptSync(String(pin), salt, 32).toString('hex');
 
 // ───────────────── แบ็กเอนด์: Supabase ─────────────────
-const sb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
+// ตัดส่วนเกินท้ายที่อยู่ (เช่น /rest/v1/ ที่มักติดมาตอนคัดลอก) เหลือแค่โดเมน
+const SB_URL = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL.trim()).origin : '';
+const sb = SB_URL && process.env.SUPABASE_SERVICE_KEY
+  ? createClient(SB_URL, process.env.SUPABASE_SERVICE_KEY.trim(), { auth: { persistSession: false } })
   : null;
 export const backend = sb ? 'supabase' : 'file';
 const must = ({ data, error }) => { if (error) throw new Error('ฐานข้อมูล: ' + error.message); return data; };

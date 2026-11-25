@@ -38,6 +38,11 @@ create table if not exists vs_results (
   created_at timestamptz not null default now()
 );
 
+-- ให้สิทธิ์เซิร์ฟเวอร์เกม (service_role) ใช้ตารางผ่าน Data API
+-- (เผื่อตอนสร้างโปรเจกต์ไม่ได้ติ๊ก "Grant API access to new tables automatically")
+grant usage on schema public to service_role;
+grant select, insert, update, delete on vs_config, vs_banks, vs_students, vs_results to service_role;
+
 -- ความปลอดภัย: เปิด Row Level Security โดยไม่มี policy ใด ๆ
 -- = ไม่มีใครอ่าน/เขียนผ่านคีย์สาธารณะ (anon) ได้เลย มีแต่เซิร์ฟเวอร์เกมที่ใช้ service_role key เท่านั้น
 alter table vs_config enable row level security;

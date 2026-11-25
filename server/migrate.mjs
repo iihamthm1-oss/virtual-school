@@ -14,7 +14,7 @@ if (existsSync('.env')) for (const line of readFileSync('.env', 'utf8').split(/\
 }
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.log('ยังไม่ได้ตั้งค่า SUPABASE_URL / SUPABASE_SERVICE_KEY ใน server/.env'); process.exit(1); }
-const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+const sb = createClient(new URL(SUPABASE_URL.trim()).origin, SUPABASE_SERVICE_KEY.trim(), { auth: { persistSession: false } });
 const read = (f) => JSON.parse(readFileSync(f, 'utf8'));
 const must = ({ error }, what) => { if (error) { console.log(`❌ ${what}: ${error.message}`); process.exit(1); } };
 
