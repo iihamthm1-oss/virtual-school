@@ -71,7 +71,7 @@ export function createLocker(ctx) {
     if (b) {
       b.disabled = true;
       const r = await ctx.buy(b.dataset.buy);
-      $('shop-msg').textContent = r.ok ? '🎉 ซื้อแล้ว! เปิดตู้เสื้อผ้า 👕 เพื่อใส่หรือขี่ได้เลย' : r.msg;
+      $('shop-msg').textContent = r.ok ? r.okMsg || '🎉 ซื้อแล้ว!' : r.msg;
       $('shop-msg').className = 'shop-msg ' + (r.ok ? 'ok' : '');
       renderShop();
       return;

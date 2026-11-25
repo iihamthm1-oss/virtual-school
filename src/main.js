@@ -135,20 +135,34 @@ function toggleRide() {
 $('btn-ride').onclick = toggleRide;
 $('btn-invite').onclick = () => net.invite();
 
+/** ซื้อสำเร็จ: พาหนะใหม่ถูกเลือกไว้พร้อมขี่ และบอกวิธีใช้ */
+function afterBuy(key, r) {
+  if (!prof.owned.includes(key)) prof.owned.push(key);
+  if (key[0] === 'v') {
+    prof.veh = Number(key.slice(1));
+    saveSolo();
+    r.okMsg = `🎉 ซื้อ${vehicleOf(prof.veh).name}แล้ว! ปิดร้านแล้วกดปุ่ม ${vehicleOf(prof.veh).icon} ด้านขวาของจอ${isTouch ? '' : ' (หรือกด R)'} เพื่อขี่`;
+  } else {
+    r.okMsg = '🎉 ซื้อแล้ว! กด 👕 แต่งตัว เพื่อใส่ชุดนี้';
+  }
+  updateRideButtons();
+}
 const locker = createLocker({
   wallet,
   owned: () => prof.owned,
   look: () => prof.look,
   vehicle: () => prof.veh,
   async buy(key) {
-    if (online) { const r = await net.buy(key); if (r.ok) play('buy'); return r; }
+    if (online) { const r = await net.buy(key); if (r.ok) { play('buy'); afterBuy(key, r); } return r; }
     const { priceOf } = await import('./catalog.js');
     const price = priceOf(key);
     if (prof.owned.includes(key)) return { ok: false, msg: 'มีของชิ้นนี้แล้ว' };
     if (prof.wallet < price) return { ok: false, msg: 'เหรียญไม่พอ' };
-    prof.wallet -= price; prof.owned.push(key); saveSolo(); updateHud(); updateRideButtons();
+    prof.wallet -= price; prof.owned.push(key); saveSolo(); updateHud();
     play('buy');
-    return { ok: true };
+    const r = { ok: true };
+    afterBuy(key, r);
+    return r;
   },
   setLook(look) {
     prof.look = cleanLook(look, prof.owned);
@@ -351,11 +365,14 @@ net.on('results', (r) => {
 $('btn-res-close').onclick = () => $('results').classList.add('hidden');
 net.on('bonus', (m) => { quests.coins += m.coins; updateHud(); sfx('coin'); toast(`🎁 ครูให้โบนัส ${m.coins} เหรียญ!`); });
 net.on('profile', (p) => {
-  prof.owned = p.owned;
+  if (Array.isArray(p.owned)) prof.owned = p.owned;
   if (p.lastVeh !== undefined && !prof.veh) prof.veh = p.lastVeh;
-  const changed = JSON.stringify(p.look) !== JSON.stringify(prof.look);
-  prof.look = p.look;
-  if (changed) rebuildMe();
+  // ข้อความหลังซื้อของมีแค่รายการของ ไม่มีหน้าตา: อย่าเอาค่าว่างไปทับ
+  if (p.look) {
+    const changed = JSON.stringify(p.look) !== JSON.stringify(prof.look);
+    prof.look = cleanLook(p.look, prof.owned);
+    if (changed) rebuildMe();
+  }
   updateRideButtons();
   locker.refresh();
 });
