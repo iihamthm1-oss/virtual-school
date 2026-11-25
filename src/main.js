@@ -77,7 +77,15 @@ scene.add(arrow);
 
 // ── สถานะเกม ──
 const state = { overview: false, started: false, startTime: 0, trackedId: null, modalOpen: false, near: null };
-const isTouch = matchMedia('(pointer: coarse)').matches;
+// จอสัมผัส: มือถือ ไอแพด (รวมตอนต่อคีย์บอร์ด/แทร็กแพด) และโน้ตบุ๊กจอสัมผัส
+let isTouch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+function enableTouchUI() {
+  isTouch = true;
+  document.body.classList.add('touch');
+  if (state.started) $('touch').classList.remove('hidden');
+}
+if (isTouch) document.body.classList.add('touch');
+addEventListener('touchstart', () => { if (!$('touch') || !$('touch').classList.contains('hidden')) return; enableTouchUI(); }, { passive: true });
 
 // ── ของสะสมของเรา: หน้าตา ของที่มี กระเป๋าเหรียญ พาหนะ ──
 // ออนไลน์: เซิร์ฟเวอร์เป็นคนเก็บ · เล่นคนเดียว: เก็บในเครื่อง (localStorage)
@@ -250,7 +258,7 @@ async function enter(mode) {
   $('hud').classList.remove('hidden');
   $('quest-panel').classList.remove('hidden');
   if (isTouch) $('touch').classList.remove('hidden');
-  if (isTouch || innerWidth < 720) $('quest-panel').classList.add('collapsed');
+  if (isTouch || innerWidth < 900) $('quest-panel').classList.add('collapsed');
   if (online) {
     $('room-pill').classList.remove('hidden');
     $('room-code').textContent = net.code;

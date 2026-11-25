@@ -115,6 +115,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; border: 0; }
 #banner .big { font-size: 30px; font-weight: 700; color: var(--primary); }
 
 /* มือถือ */
+/* จอแท็บเล็ต/มือถือ: แผงภารกิจอยู่ใต้แถบบน ไม่ทับกัน */
+@media (max-width: 900px) {
+  #quest-panel { width: 230px; left: 8px; top: max(60px, env(safe-area-inset-top)); }
+}
 @media (max-width: 720px) {
   #quest-panel { width: 210px; left: 8px; top: max(58px, env(safe-area-inset-top)); }
   #hud { gap: 5px; top: max(8px, env(safe-area-inset-top)); }
@@ -161,11 +165,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 #chat-panel button:active { transform: scale(0.95); }
 #chat-log { position: fixed; left: 12px; bottom: 16px; z-index: 9; display: grid; gap: 4px; pointer-events: none; max-width: 300px; }
 #chat-log .line { background: rgba(59,51,85,0.75); color: #fff; padding: 4px 10px; border-radius: 10px; font-size: 13px; animation: toast 6s forwards; width: fit-content; }
-@media (pointer: coarse) {
-  #btn-chat { bottom: 136px; right: max(36px, env(safe-area-inset-right)); width: 54px; height: 54px; }
-  #chat-panel { bottom: 200px; }
-  #chat-log { left: 12px; bottom: 190px; }
-}
+body.touch #btn-chat { bottom: 136px; right: max(36px, env(safe-area-inset-right)); width: 54px; height: 54px; }
+body.touch #chat-panel { bottom: 200px; }
+body.touch #chat-log { left: 12px; bottom: 190px; }
 
 /* รหัสนักเรียน */
 .opt { font-weight: 400; font-size: 12px; color: var(--ink-soft); }
@@ -193,7 +195,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 #btn-ride { bottom: 86px; }
 #btn-ride.on { background: #ffe1cc; }
 #btn-invite { bottom: 156px; }
-@media (pointer: coarse) { #btn-ride { bottom: 206px; right: max(36px, env(safe-area-inset-right)); } #btn-invite { bottom: 272px; right: max(36px, env(safe-area-inset-right)); } }
+body.touch #btn-ride { bottom: 206px; right: max(36px, env(safe-area-inset-right)); }
+body.touch #btn-invite { bottom: 272px; right: max(36px, env(safe-area-inset-right)); }
 .invite-box { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 21; background: #fffdfa; border-radius: 18px; box-shadow: var(--shadow); padding: 14px 18px; text-align: center; display: grid; gap: 10px; font-size: 17px; animation: pop 0.3s; }
 .invite-box .row { display: flex; gap: 8px; justify-content: center; }
 
