@@ -56,6 +56,7 @@ class SchoolRoom extends Room {
     if (!bank || !bank.questions.length) throw new Error('ไม่พบชุดคำถาม');
     this.roomId = newCode();
     this.bankData = bank;
+    this.bankId = bank.id;
     this.minutes = num(Number(options.minutes) || 30, 5, 90);
     this.autoDispose = false; // ครูรีเฟรชหน้าได้ ห้องไม่หาย
     this.state = new State();
@@ -132,7 +133,7 @@ class SchoolRoom extends Room {
 
     // ขอชุดคำถาม (ส่งซ้ำได้ กันข้อความแรกหลุดตอนเพิ่งเข้าห้อง)
     this.onMessage('getBank', (client) => {
-      client.send('bank', { title: this.bankData.title, questions: this.bankData.questions });
+      client.send('bank', { id: this.bankId, title: this.bankData.title, questions: this.bankData.questions });
       const p = player(client), meta = this.meta.get(client.sessionId);
       if (p && meta) client.send('profile', { owned: meta.owned, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit }, lastVeh: meta.lastVeh || 0 });
     });
@@ -211,8 +212,28 @@ class SchoolRoom extends Room {
     this.onMessage('unseat', (client) => { const q = player(client); if (q) q.seat = ''; });
 
     // ── คำสั่งครู ──
-    this.onMessage('start', teacherOnly((c, m) => {
-      if (this.state.phase === 'play') return;
+    // โหลดชุดคำถามล่าสุดจากคลัง (ครูอาจเพิ่ม/แก้คำถามหลังเปิดห้อง หรือเลือกชุดใหม่)
+    const loadBank = async (id) => {
+      const bank = await store.getBank(id || this.bankId);
+      if (!bank || !bank.questions.length) return false;
+      this.bankData = bank;
+      this.bankId = bank.id;
+      this.state.bank = bank.title;
+      this.state.total = bank.questions.length;
+      this.broadcast('bank', { id: bank.id, title: bank.title, questions: bank.questions });
+      return true;
+    };
+    this.onMessage('setBank', teacherOnly(async (c, m) => {
+      if (this.state.phase === 'play' || this.starting) return c.send('notice', { msg: 'เปลี่ยนชุดคำถามได้เมื่อจบรอบแล้ว' });
+      if (!(await loadBank(m.bank))) return c.send('notice', { msg: 'ชุดนี้ยังไม่มีคำถาม' });
+      console.log(`[${this.roomId}] เปลี่ยนชุดคำถามเป็น ${this.bankData.title}`);
+    }));
+    this.onMessage('start', teacherOnly(async (c, m) => {
+      if (this.state.phase === 'play' || this.starting) return;
+      this.starting = true;
+      try {
+        if (!(await loadBank(m.bank))) return c.send('notice', { msg: 'ชุดคำถามนี้ยังไม่มีคำถาม เพิ่มคำถามก่อนนะ' });
+      } finally { this.starting = false; }
       if (m.minutes) this.minutes = num(Number(m.minutes), 5, 90);
       // เริ่มรอบใหม่: ล้างคะแนนรอบก่อน
       this.state.players.forEach((p, id) => { p.solved = 0; p.wrong = 0; p.coins = 0; const mt = this.meta.get(id); if (mt) { mt.attempts = {}; mt.solvedIds = new Set(); } });
@@ -221,7 +242,7 @@ class SchoolRoom extends Room {
       this.state.endsAt = Date.now() + this.minutes * 60 * 1000;
       this.state.phase = 'play';
       this.broadcast('phase', { phase: 'play' });
-      console.log(`[${this.roomId}] เริ่มรอบ ${this.minutes} นาที`);
+      console.log(`[${this.roomId}] เริ่มรอบ ${this.minutes} นาที · ${this.bankData.title} ${this.bankData.questions.length} ข้อ`);
     }));
     this.onMessage('end', teacherOnly(() => this.endRound()));
     this.onMessage('close', teacherOnly(() => {
@@ -282,7 +303,7 @@ class SchoolRoom extends Room {
     // ครู: ไม่มีตัวละคร แค่ดูและสั่งการ
     if (isTeacher(options?.teacher)) {
       this.teachers.add(client.sessionId);
-      client.send('bank', { title: this.bankData.title, questions: this.bankData.questions });
+      client.send('bank', { id: this.bankId, title: this.bankData.title, questions: this.bankData.questions });
       return;
     }
     if (this.state.players.size >= MAX_PLAYERS) throw new Error('ห้องเต็มแล้ว');
@@ -308,7 +329,7 @@ class SchoolRoom extends Room {
     this.state.players.set(client.sessionId, p);
     this.meta.set(client.sessionId, { studentCode, attempts: {}, solvedIds: new Set(), owned, lastVeh: stu?.equip?.veh || 0 });
     client.send('profile', { owned, look: { skin: p.skin, hair: p.hair, hairColor: p.hairColor, outfit: p.outfit }, lastVeh: stu?.equip?.veh || 0 });
-    client.send('bank', { title: this.bankData.title, questions: this.bankData.questions });
+    client.send('bank', { id: this.bankId, title: this.bankData.title, questions: this.bankData.questions });
     console.log(`[${this.roomId}] + ${p.name} (${this.state.players.size}/${MAX_PLAYERS})`);
   }
 

@@ -79,11 +79,14 @@ document.querySelectorAll('.tabs button').forEach((b) => {
 });
 
 // ═════════════ ห้องเรียนสด ═════════════
-let room = null, bankQuestions = [], stats = [], lastRender = 0, timerStarted = false;
+let room = null, bankQuestions = [], stats = [], lastRender = 0, timerStarted = false, currentBankId = '';
 
 async function loadBankOptions() {
   const banks = await api('/banks');
-  $('setup-bank').innerHTML = banks.map((b) => `<option value="${esc(b.id)}">${esc(b.title)} (${b.count} ข้อ)</option>`).join('');
+  const opts = banks.map((b) => `<option value="${esc(b.id)}">${esc(b.title)} (${b.count} ข้อ)</option>`).join('');
+  $('setup-bank').innerHTML = opts;
+  $('live-bank').innerHTML = opts;
+  if (currentBankId) $('live-bank').value = currentBankId;
 }
 
 $('btn-open').onclick = async () => {
@@ -116,7 +119,13 @@ async function attach(r) {
   $('room-link').value = link;
   $('qr').src = await QRCode.toDataURL(link, { width: 400, margin: 1, color: { dark: '#3b3355' } });
 
-  r.onMessage('bank', (b) => { bankQuestions = b.questions; $('bank-name').textContent = '📚 ' + b.title; });
+  r.onMessage('bank', (b) => {
+    bankQuestions = b.questions;
+    currentBankId = b.id || currentBankId;
+    if (currentBankId) $('live-bank').value = currentBankId;
+    $('bank-name').textContent = `📚 ${b.title} · ${b.questions.length} ข้อ`;
+  });
+  r.onMessage('notice', (m) => toast(m.msg));
   r.onMessage('stats', (s) => { stats = s; renderHard(); });
   r.onMessage('results', (res) => {
     toast(`จบรอบแล้ว · บันทึกผลเรียบร้อย (${res.total} คน)`);
@@ -153,6 +162,7 @@ function renderLive() {
   $('btn-start').textContent = st.phase === 'ended' ? '▶ เริ่มรอบใหม่' : '▶ เริ่มรอบ';
   $('btn-start').disabled = st.phase === 'play';
   $('btn-end').disabled = $('btn-extend').disabled = st.phase !== 'play';
+  $('live-bank').disabled = st.phase === 'play';
   const list = sortedPlayers();
   $('count').textContent = list.length;
   $('empty-players').classList.toggle('hidden', list.length > 0);
@@ -205,7 +215,9 @@ function renderHard() {
   }).join('');
 }
 
-$('btn-start').onclick = () => room?.send('start', { minutes: Number($('setup-minutes').value) });
+$('btn-start').onclick = () => room?.send('start', { minutes: Number($('setup-minutes').value), bank: $('live-bank').value });
+// เปลี่ยนชุดคำถามระหว่างรอบ (ตอนรอเริ่ม/จบรอบ) — ตอนกำลังเล่นจะล็อกไว้
+$('live-bank').onchange = () => { if (room?.state?.phase !== 'play') { room.send('setBank', { bank: $('live-bank').value }); toast('เปลี่ยนชุดคำถามแล้ว'); } };
 $('btn-end').onclick = () => { if (confirm('จบรอบตอนนี้?')) room?.send('end'); };
 $('btn-extend').onclick = () => { room?.send('extend', { minutes: 5 }); toast('เพิ่มเวลา 5 นาที'); };
 $('btn-close').onclick = () => { if (confirm('ปิดห้องนี้? นักเรียนทุกคนจะออกจากห้อง')) { room?.send('close'); setTimeout(() => { room?.leave(); resetLive(); }, 800); } };
