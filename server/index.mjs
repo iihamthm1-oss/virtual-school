@@ -1,4 +1,4 @@
-// เซิร์ฟเวอร์ออนไลน์ โรงเรียนเสมือน 3D (Colyseus 0.18)
+// เซิร์ฟเวอร์ออนไลน์ โรงเรียนห้องสื่อครูอัง 3D (Colyseus 0.18)
 // รัน: npm start  (พอร์ต 2567) · หน้าครูเรียก API ที่ /api/*
 import { Server, Room } from 'colyseus';
 import { schema, t } from '@colyseus/schema';
@@ -348,4 +348,4 @@ const port = Number(process.env.PORT || 2567);
 const server = new Server({ express: (app) => mountApi(app) });
 server.define('school', SchoolRoom);
 await server.listen(port, '0.0.0.0');
-console.log(`โรงเรียนเสมือน 3D: เซิร์ฟเวอร์พร้อมที่พอร์ต ${port}`);
+console.log(`โรงเรียนห้องสื่อครูอัง 3D: เซิร์ฟเวอร์พร้อมที่พอร์ต ${port}`);

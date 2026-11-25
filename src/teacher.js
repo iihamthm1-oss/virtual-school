@@ -379,7 +379,7 @@ function renderStudents() {
   $('stu-count').textContent = list.length;
   $('students').innerHTML = list.map((s) => `<tr><td class="num">${s.code}</td><td>${esc(s.name)}</td><td>${esc(s.klass)}</td><td class="num">${s.coins}</td><td class="num">${s.solved}</td><td class="num">${s.rounds}</td><td class="act"><button class="icon" data-del="${s.code}" title="ลบ">🗑️</button></td></tr>`).join('')
     || '<tr><td colspan="7" class="empty">ยังไม่มีรายชื่อ</td></tr>';
-  $('print-cards').innerHTML = list.map((s) => `<div class="pcard"><div class="k">โรงเรียนเสมือน 3D · ${esc(s.klass)}</div><div class="n">${esc(s.name)}</div><div class="k">รหัสนักเรียน</div><div class="c">${s.code}</div></div>`).join('');
+  $('print-cards').innerHTML = list.map((s) => `<div class="pcard"><div class="k">โรงเรียนห้องสื่อครูอัง 3D · ${esc(s.klass)}</div><div class="n">${esc(s.name)}</div><div class="k">รหัสนักเรียน</div><div class="c">${s.code}</div></div>`).join('');
 }
 $('stu-filter').onchange = renderStudents;
 $('students').onclick = async (e) => {

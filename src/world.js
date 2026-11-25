@@ -886,7 +886,7 @@ export function buildWorld(scene) {
       addCircle(side * 4.6, WALL, 0.9);
     }
     box(root, 10.4, 0.9, 0.6, '#c7b6f0', 0, 4.4, WALL);
-    const lab = makeLabel('โรงเรียนเสมือน 3D', { size: 2.2, bg: '#ffffff' });
+    const lab = makeLabel('โรงเรียนห้องสื่อครูอัง 3D', { size: 1.8, bg: '#ffffff' });
     lab.position.set(0, 6.0, WALL + 0.4);
     root.add(lab);
   }
