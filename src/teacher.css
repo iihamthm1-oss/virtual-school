@@ -128,3 +128,24 @@ table.grid { width: 100%; border-collapse: collapse; font-size: 15px; }
   .pcard .c { font-size: 30px; font-weight: 700; letter-spacing: 4px; color: #7c6cf0; }
   .pcard .k { font-size: 12px; color: #6f6890; }
 }
+
+/* ช่องกรอกไม่ล้นกรอบ: ทุกช่องกว้างเต็มพื้นที่ของตัวเองแต่ไม่เกิน */
+input, select, textarea { max-width: 100%; min-width: 0; }
+.login-card input { width: 100%; }
+#pin { letter-spacing: 8px; padding-left: 8px; }
+label > input, label > select, label > textarea { width: 100%; }
+
+.list li .muted { white-space: nowrap; }
+
+/* หัวหน้าครูบนจอแคบ: ชื่อ + ออกจากระบบ บรรทัดเดียว · เมนูแท็บเลื่อนซ้ายขวาได้ */
+@media (max-width: 720px) {
+  .top { padding: 10px 12px; gap: 6px 10px; }
+  .brand { flex: 1; font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand .muted { display: none; }
+  .tabs { order: 3; flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { white-space: nowrap; flex: none; padding: 7px 12px; }
+  .tab { padding: 12px; }
+  .setup { margin: 12px auto; }
+  .code { font-size: 40px; }
+}

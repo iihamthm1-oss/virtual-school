@@ -100,7 +100,7 @@ export function createPreview(canvas) {
       c.root.rotation.y = yaw;
       c.animate(dt, veh ? 3 : 0, false, now / 1000);
     }
-    const far = veh === 5 ? 6 : veh ? 5 : 4.3;
+    const far = veh === 5 ? 6.6 : veh ? 5.6 : 5.0;
     cam.position.set(0, 1.25, far);
     cam.lookAt(0, veh ? 0.85 : 1.0, 0);
     renderer.render(scene, cam);
