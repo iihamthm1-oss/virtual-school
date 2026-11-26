@@ -29,6 +29,19 @@ export function cyl(parent, rTop, rBot, h, color, x = 0, y = 0, z = 0, seg = 8) 
   return m;
 }
 
+/**
+ * วาดข้อความกึ่งกลางเอง (ไม่พึ่ง textAlign='center')
+ * บน Safari มือถือบางรุ่น ข้อความไปเริ่มที่จุดกึ่งกลางแล้วล้นกรอบขวา จึงคำนวณตำแหน่งซ้ายเอง
+ * ถ้ายาวเกิน maxW จะบีบแนวนอนให้พอดี
+ */
+export function fillCentered(g, text, cx, y, maxW) {
+  g.textAlign = 'left';
+  const w = g.measureText(text).width;
+  if (maxW && w > maxW) {
+    g.save(); g.translate(cx, y); g.scale(maxW / w, 1); g.fillText(text, -w / 2, 0); g.restore();
+  } else g.fillText(text, cx - w / 2, y);
+}
+
 /** ป้ายข้อความลอย (Sprite) พื้นหลังโค้งมน */
 export function makeLabel(text, { size = 1, bg = 'rgba(255,255,255,0.92)', fg = '#3b3355', font = 'Mitr', weight = 600 } = {}) {
   const px = 64;
@@ -46,9 +59,8 @@ export function makeLabel(text, { size = 1, bg = 'rgba(255,255,255,0.92)', fg = 
   g.roundRect(0, 0, w, h, r);
   g.fill();
   g.fillStyle = fg;
-  g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(text, w / 2, h / 2 + px * 0.06);
+  fillCentered(g, text, w / 2, h / 2 + px * 0.06, w - px * 0.5);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;

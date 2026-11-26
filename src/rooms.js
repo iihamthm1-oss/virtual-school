@@ -1,7 +1,7 @@
 // ของตกแต่งห้องพิเศษ: ห้องบริหาร ห้องดนตรี-ศิลปะ ห้องอนุบาล สหกรณ์ โรงยิม
 // เลือกแบบห้องจากชื่อห้อง (ป้ายหน้าห้อง) แล้ววางของในพิกัดของห้องนั้น
 import * as THREE from 'three';
-import { mat, box, cyl, pick } from './util.js';
+import { mat, box, cyl, pick, fillCentered } from './util.js';
 
 const KINDS = [
   ['ยิม', 'gym'], ['สหกรณ์', 'coop'], ['ผู้อำนวยการ', 'director'], ['ธุรการ', 'office'], ['วิชาการ', 'office'],
@@ -68,8 +68,8 @@ function textPanel(parent, lines, w, h, px, py, pz, rotY, bg, fg) {
   const c = document.createElement('canvas'); c.width = 512; c.height = Math.round((512 * h) / w);
   const g = c.getContext('2d');
   g.fillStyle = bg; g.beginPath(); g.roundRect(0, 0, c.width, c.height, 24); g.fill();
-  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-  lines.forEach(([t, size], k) => { g.font = `700 ${size}px Mitr, sans-serif`; g.fillText(t, 256, ((k + 0.5) * c.height) / lines.length, 490); });
+  g.fillStyle = fg; g.textBaseline = 'middle';
+  lines.forEach(([t, size], k) => { g.font = `700 ${size}px Mitr, sans-serif`; fillCentered(g, t, 256, ((k + 0.5) * c.height) / lines.length, 490); });
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex }));
   m.position.set(px, py, pz); m.rotation.y = rotY; parent.add(m);

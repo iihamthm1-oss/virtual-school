@@ -18,7 +18,12 @@ import { API_URL, wakeServer } from './config.js';
 const $ = (id) => document.getElementById(id);
 
 // รอฟอนต์ไทยก่อนวาดป้าย (ไม่เกิน 2.5 วิ ถ้าออฟไลน์ใช้ฟอนต์สำรอง)
-await Promise.race([document.fonts.load('600 64px Mitr'), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
+// โหลดฟอนต์ทั้งชุดตัวอักษรไทยและละติน ทุกน้ำหนักที่ใช้ ก่อนวาดป้าย (ไม่งั้นวัดความกว้างด้วยฟอนต์สำรอง)
+const FONT_SAMPLE = 'กขคอาคารเรียน สนามเด็กเล่น 0123456789 ABCabc';
+await Promise.race([
+  Promise.all(['400', '600', '700'].map((w) => document.fonts.load(`${w} 64px Mitr`, FONT_SAMPLE))),
+  new Promise((r) => setTimeout(r, 4000)),
+]).catch(() => {});
 
 // ── เรนเดอร์ ──
 const canvas = $('game');

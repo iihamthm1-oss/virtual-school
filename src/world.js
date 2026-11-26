@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, box, cyl, makeLabel, rand, pick } from './util.js';
+import { mat, box, cyl, makeLabel, rand, pick, fillCentered } from './util.js';
 import { furnishRoom, roomKind, roomSignColor } from './rooms.js';
 
 // พาเลตพาสเทล
@@ -179,8 +179,8 @@ export function buildWorld(scene) {
     const c = document.createElement('canvas'); c.width = 320; c.height = 96;
     const g2 = c.getContext('2d');
     g2.fillStyle = color; g2.beginPath(); g2.roundRect(0, 0, 320, 96, 20); g2.fill();
-    g2.fillStyle = '#ffffff'; g2.font = '600 44px Mitr, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
-    g2.fillText(text, 160, 52, 300);
+    g2.fillStyle = '#ffffff'; g2.font = '600 44px Mitr, sans-serif'; g2.textBaseline = 'middle';
+    fillCentered(g2, text, 160, 52, 300);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.45), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
     m.position.set(px, y, pz);
@@ -660,7 +660,7 @@ export function buildWorld(scene) {
       for (let k = 0; k < 3; k++) cyl(g, 0.25, 0.22, 0.3, pick(['#c0c0c8', '#ffd66b', '#ff9e7a']), sx - 1.2 + k * 1.2, 1.08, -9.6, 8);
       const c2 = document.createElement('canvas'); c2.width = 320; c2.height = 90;
       const cg = c2.getContext('2d'); cg.fillStyle = color; cg.fillRect(0, 0, 320, 90);
-      cg.fillStyle = '#fff'; cg.font = '600 46px Mitr, sans-serif'; cg.textAlign = 'center'; cg.textBaseline = 'middle'; cg.fillText(food, 160, 48);
+      cg.fillStyle = '#fff'; cg.font = '600 46px Mitr, sans-serif'; cg.textBaseline = 'middle'; fillCentered(cg, food, 160, 48, 300);
       const tx = new THREE.CanvasTexture(c2); tx.colorSpace = THREE.SRGBColorSpace;
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.73), new THREE.MeshBasicMaterial({ map: tx }));
       sign.position.set(sx, 3.1, -9.6); g.add(sign);
@@ -1039,7 +1039,7 @@ export function buildWorld(scene) {
       const g2 = c.getContext('2d');
       g2.fillStyle = '#fffdf6'; g2.fillRect(0, 0, 512, 320);
       g2.fillStyle = '#7c6cf0'; g2.fillRect(0, 0, 512, 70);
-      g2.fillStyle = '#ffffff'; g2.font = '600 40px Mitr, sans-serif'; g2.textAlign = 'center'; g2.fillText(title, 256, 50);
+      g2.fillStyle = '#ffffff'; g2.font = '600 40px Mitr, sans-serif'; fillCentered(g2, title, 256, 50, 490);
       g2.fillStyle = '#3b3355'; g2.font = '400 28px Mitr, sans-serif'; g2.textAlign = 'left';
       lines.forEach((l, i) => g2.fillText(l, 28, 118 + i * 48));
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
