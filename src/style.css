@@ -287,3 +287,38 @@ body:not(.touch) .tip-touch { display: none; }
 .role-switch .role { padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #6b6585; text-decoration: none; white-space: nowrap; cursor: pointer; }
 .role-switch .role.on { background: #7c6cf0; color: #fff; cursor: default; box-shadow: 0 2px 6px rgba(124,108,240,.35); }
 .role-switch a.role:hover { background: #e4dcfa; }
+
+/* จอเตี้ย (มือถือแนวนอน): การ์ดทุกใบเลื่อนดูได้ ไม่ล้นจอ และหน้าแรกกระชับขึ้น */
+.overlay > .card { max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-height: 500px) {
+  .overlay { padding: 8px; }
+  .overlay > .card { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); padding: 16px 20px; }
+  .start-card .logo { font-size: 30px; margin: 0; line-height: 1.2; }
+  .start-card h1 { font-size: 22px; margin: 2px 0; }
+  .start-card .sub, .start-card > p { margin: 2px 0 8px; font-size: 13px; }
+  .start-card .howto { display: none; }
+  .role-switch { margin-bottom: 4px; }
+}
+@media (max-height: 500px) {
+  .start-card input { padding-top: 8px; padding-bottom: 8px; }
+  .start-card label { margin-top: 8px; }
+}
+
+/* ห้องแต่งตัว/ร้านค้า บนมือถือแนวนอน: ตัวละครอยู่ซ้าย (ค้างไว้) ตัวเลือกอยู่ขวาเลื่อนดูได้ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .locker-head { margin-bottom: 6px; }
+  .locker-head h2 { font-size: 18px; }
+  .locker-body { grid-template-columns: minmax(170px, 36%) 1fr; gap: 10px; }
+  .stage { position: sticky; top: 0; }
+  .stage canvas { height: calc(100vh - 120px); height: calc(100dvh - 120px); }
+  .stage-cap { font-size: 11px; padding: 4px 6px 6px; min-height: 0; }
+  .pics { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  .pics.small { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+}
+
+/* แผงแชทไม่สูงเกินจอ (ตอนออนไลน์มีข้อความสำเร็จรูป 12 ปุ่ม) */
+#chat-panel { max-height: calc(100vh - 100px); max-height: calc(100dvh - 100px); overflow-y: auto; }
+@media (max-height: 500px) and (orientation: landscape) {
+  body.touch #chat-panel { bottom: 10px; right: 112px; max-height: calc(100vh - 70px); max-height: calc(100dvh - 70px); }
+  #chat-presets button { padding: 6px 8px; font-size: 13px; }
+}

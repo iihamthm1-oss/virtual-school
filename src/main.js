@@ -413,8 +413,22 @@ function fitQuestPanel() {
   qp.style.top = '';
   const h = $('hud').getBoundingClientRect(), q = qp.getBoundingClientRect();
   if (h.width && h.left < q.right + 6 && h.bottom > q.top) qp.style.top = `${Math.ceil(h.bottom + 8)}px`;
+  // จอเตี้ย (มือถือแนวนอน): แผงที่กางอยู่ต้องไม่ยาวลงไปทับจอยสติ๊ก ให้รายการเลื่อนดูในแผงแทน
+  const joy = $('joystick'), list = $('quest-list');
+  qp.style.maxHeight = '';
+  list.style.maxHeight = '';
+  if (joy && joy.getClientRects().length && !qp.classList.contains('collapsed')) {
+    const j = joy.getBoundingClientRect(), top = qp.getBoundingClientRect().top;
+    if (j.left < q.right && j.top < qp.getBoundingClientRect().bottom) {
+      const room = Math.max(90, j.top - top - 8);
+      qp.style.maxHeight = `${room}px`;
+      list.style.maxHeight = `${Math.max(40, room - $('quest-toggle').offsetHeight)}px`;
+      list.style.overflowY = 'auto';
+    }
+  }
 }
 addEventListener('resize', fitQuestPanel);
+$('quest-toggle').addEventListener('click', () => requestAnimationFrame(fitQuestPanel));
 setInterval(fitQuestPanel, 1000);
 const tracked = () => quests.active.find((a) => a.q.id === state.trackedId) || quests.nearest(player.pos)?.quest;
 
@@ -622,7 +636,8 @@ function frame() {
   const where = here && !state.overview ? here : null;
   const key = where && (where.cut || where.room) ? where.b.name + '|' + where.level : '';
   if (key !== state.insideKey) {
-    if (key) toast(`${where.b.name} · ชั้น ${where.level + 1}`);
+    // ป้ายบอกที่อยู่: ไม่แสดงตอนเปิดหน้าต่างใด ๆ อยู่ (บนจอเตี้ยจะลอยทับคำถาม)
+    if (key && !document.querySelector('.overlay:not(.hidden)')) toast(`${where.b.name} · ชั้น ${where.level + 1}`);
     setOutdoors(!key);
     state.insideKey = key;
   }
