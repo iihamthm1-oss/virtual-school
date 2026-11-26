@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mat, box, cyl, makeLabel, rand, pick } from './util.js';
+import { furnishRoom, roomKind, roomSignColor } from './rooms.js';
 
 // พาเลตพาสเทล
 const C = {
@@ -21,6 +22,7 @@ const L = {
   library: { x: 0, z: -10 }, canteen: { x: -22, z: -58 }, hall: { x: 26, z: -60 },
   track: { x: -66, z: 82 }, pond: { x: 66, z: 84, r: 14 }, sala: { x: 43, z: 84 },
   shop: { x: 22, z: 60 }, court: { x: -84, z: -52 }, garden: { x: 84, z: -56 }, bikes: { x: 24, z: 106 },
+  admin: { x: 62, z: 54 }, arts: { x: -64, z: 54 }, gym: { x: 92, z: 0 }, kinder: { x: -92, z: 0 }, coop: { x: -90, z: -28 },
   stage: { x: -19, z: 58 }, carpark: { x: -24, z: 106 }, playground: { x: -33, z: 56 }, tower: { x: -24, z: -96 },
 };
 
@@ -40,6 +42,10 @@ const PATHS = [
   { x1: 0, z1: -3, x2: 0, z2: 13, w: 3.5 },     // ทางเดินห้องสมุด
   { x1: -54, z1: 16, x2: -25.2, z2: 16, w: 3.6 }, // ทางเดินมีหลังคา ฝั่งตะวันตก
   { x1: 25.2, z1: 16, x2: 54, z2: 16, w: 3.6 },   // ทางเดินมีหลังคา ฝั่งตะวันออก
+  { x1: 62, z1: 41, x2: 62, z2: 46.5, w: 3 },     // ทางเข้าอาคารอำนวยการ
+  { x1: -64, z1: 41, x2: -64, z2: 46.5, w: 3 },   // ทางเข้าอาคารศิลปะ-ดนตรี
+  { x1: 75, z1: 35, x2: 75, z2: -14, w: 3.5 },    // ทางเดินไปโรงยิม
+  { x1: -79, z1: 35, x2: -79, z2: -32, w: 3.5 },  // ทางเดินไปอาคารอนุบาล + สหกรณ์
 ];
 
 export const QUEST_SPOTS = [
@@ -58,6 +64,11 @@ export const QUEST_SPOTS = [
   { name: 'สนามบาสเกตบอล', x: -84, z: -52 },
   { name: 'สวนวิทยาศาสตร์', x: 84, z: -50 },
   { name: 'ประตูโรงเรียน', x: 9, z: 112 },
+  { name: 'โถงอาคารอำนวยการ', x: 62, z: 53, indoor: true },
+  { name: 'โถงอาคารศิลปะ-ดนตรี', x: -64, z: 53, indoor: true },
+  { name: 'กลางโรงยิม', x: 92, z: 2.5 },
+  { name: 'โถงอาคารอนุบาล', x: -91, z: 0, indoor: true },
+  { name: 'หน้าสหกรณ์โรงเรียน', x: -79, z: -24 },
 ];
 export const SPAWN = { x: 0, z: 104 };
 
@@ -200,6 +211,12 @@ export function buildWorld(scene) {
     safe: { bg: '#ffffff', ink: '#2f3a6b', title: 'ใช้อินเทอร์เน็ตอย่างปลอดภัย', lines: ['• ไม่บอกรหัสผ่านใคร', '• ไม่ให้ข้อมูลส่วนตัว', '• ตรวจสอบข่าวก่อนแชร์', '• ใช้คำสุภาพเสมอ'] },
     comp: { bg: '#2f2a45', ink: '#ffffff', title: 'Scratch: เมื่อคลิกธงเขียว', lines: ['ทำซ้ำตลอดไป', '   ถ้า แตะขอบ แล้ว', '       หันกลับ', '   เคลื่อนที่ 10 ก้าว'] },
     sci: { bg: '#ffffff', ink: '#2f5a3a', title: 'การทดลอง: พืชกับแสง', lines: ['สมมติฐาน: พืชต้องใช้แสง', 'ตัวแปรต้น: ปริมาณแสง', 'ตัวแปรตาม: ความสูงของพืช', 'ผลการทดลอง: ...'] },
+    meet: { bg: '#ffffff', ink: '#2f3a6b', title: 'วาระการประชุมครู', lines: ['1. เรื่องแจ้งเพื่อทราบ', '2. กิจกรรมสัปดาห์วิทยาศาสตร์', '3. สรุปผลภารกิจในเกม', '4. เรื่องอื่น ๆ'] },
+    duty: { bg: '#ffffff', ink: '#2f3a6b', title: 'ตารางเวรครู', lines: ['จันทร์ – เวรประตูหน้า', 'อังคาร – เวรโรงอาหาร', 'พุธ – เวรห้องสมุด', 'พฤหัสบดี – เวรสนามกีฬา'] },
+    thai: { bg: '#fffaf0', ink: '#7a3a2a', title: 'โน้ตเพลงไทย', lines: ['- - - ด   - ร - ม', '- - - ซ   - ม - ร', '- ด - ร   - ม - ซ', 'ด = โด   ร = เร   ม = มี   ซ = ซอล'] },
+    music: { bg: '#ffffff', ink: '#2f3a6b', title: 'ตัวโน้ตสากล', lines: ['โด  เร  มี  ฟา  ซอล  ลา  ที  โด', 'C    D    E    F    G     A    B    C', 'โน้ตตัวกลม = 4 จังหวะ', 'โน้ตตัวดำ = 1 จังหวะ'] },
+    art: { bg: '#ffffff', ink: '#6b2f5a', title: 'แม่สีวัตถุธาตุ', lines: ['แดง + เหลือง = ส้ม', 'เหลือง + น้ำเงิน = เขียว', 'น้ำเงิน + แดง = ม่วง', 'ลองผสมสีดูนะ!'] },
+    kinder: { bg: '#fffdf2', ink: '#e2735e', title: 'ก ไก่   ข ไข่   ฃ ขวด', lines: ['ค ควาย   ฅ คน   ฆ ระฆัง', 'ง งู   จ จาน   ฉ ฉิ่ง', '1  2  3  4  5  6  7  8  9  10', 'วันนี้หนูเก่งมาก'] },
   };
   const boardTex = {};
   function boardFace(parent, kind, bw, bh, px, py, pz) {
@@ -219,12 +236,12 @@ export function buildWorld(scene) {
     m.position.set(px, py, pz);
     parent.add(m);
   }
-  const signColor = (label) => (label.includes('คอม') ? '#4fc3e8' : label.includes('วิทย') ? '#a6c75a' : label.includes('สมุด') ? '#b49ae0' : '#ff8fab');
+  const signColor = (label) => roomSignColor(label) || (label.includes('คอม') ? '#4fc3e8' : label.includes('วิทย') ? '#a6c75a' : label.includes('สมุด') ? '#b49ae0' : '#ff8fab');
 
-  function building({ x, z, w, d, floors, rotY = 0, wall = C.wall, accent = C.accent1, roof = C.roof, name, rooms = [], open = false, clock = false }) {
+  function building({ x, z, w, d, floors, rotY = 0, wall = C.wall, accent = C.accent1, roof = C.roof, name, rooms = [], open = false, clock = false, fh: floorH = FH, door = 3 }) {
     const g = new THREE.Group();
-    const fh = FH, H = floors * fh, cd = 2.4, front = d / 2, t = 0.25;
-    const SX = w / 2, RUN = 3.2, LAND = 1.3, TW = SX + RUN + LAND; // หอบันไดอยู่ช่วง x = SX..TW
+    const fh = floorH, H = floors * fh, cd = 2.4, front = d / 2, t = 0.25;
+    const SX = w / 2, RUN = 3.2, LAND = 1.3, stairs = floors > 1, TW = stairs ? SX + RUN + LAND : SX; // หอบันไดอยู่ช่วง x = SX..TW
     const LANE = cd / 2, ZA0 = front + LANE, ZA1 = front + cd, ZB0 = front, ZB1 = front + LANE;
     const cos = Math.cos(rotY), sin = Math.sin(rotY);
     const toWorld = (lx, lz) => [x + lx * cos + lz * sin, z - lx * sin + lz * cos];
@@ -242,7 +259,7 @@ export function buildWorld(scene) {
 
     // แบ่งห้อง: ห้องโถงกลาง + ห้องสองข้าง
     const spans = [];
-    if (open) spans.push({ a: -w / 2, b: w / 2, door: 3, main: true });
+    if (open) spans.push({ a: -w / 2, b: w / 2, door, main: true });
     else {
       const half = w / 2 - 3, n = Math.max(1, Math.round(half / 10)), rw = half / n;
       for (let i = 0; i < n; i++) spans.push({ a: -w / 2 + i * rw, b: -w / 2 + (i + 1) * rw });
@@ -313,6 +330,10 @@ export function buildWorld(scene) {
           B(sh, 1.9, 0.12, 0.25, '#ffffff', wx, 1.0, side * (front + 0.06));
           B(sh, 1.6, 1.3, 0.04, '#d6f1ff', wx, 1.15, side * (front - t - 0.02), { emissive: '#c4ecff', emissiveIntensity: 0.6 });
           B(sh, 1.75, 0.08, 0.16, '#ffffff', wx, 1.05, side * (front - t - 0.06));
+          if (fh > 5) { // อาคารเพดานสูง: หน้าต่างแถวบน
+            B(sh, 2.0, 1.5, 0.12, C.window, wx, fh - 2.6, side * (front + 0.02), { emissive: '#2a5a78', emissiveIntensity: 0.15 });
+            B(sh, 1.9, 1.4, 0.04, '#d6f1ff', wx, fh - 2.55, side * (front - t - 0.02), { emissive: '#c4ecff', emissiveIntensity: 0.6 });
+          }
         }
       }
       // เสาระเบียงช่วงชั้นนี้
@@ -321,6 +342,7 @@ export function buildWorld(scene) {
 
       // ── บันไดหักกลับ จากชั้นนี้ขึ้นชั้นถัดไป ──
       const tw = (TW - SX);
+      if (stairs) {
       B(sh, tw + 0.25, fh, 0.25, wall, SX + tw / 2, 0, front - 0.12);                 // ผนังด้านใน
       B(sh, 0.25, fh, cd + 0.5, wall, TW + 0.12, 0, front + cd / 2);                   // ผนังปลาย
       B(sh, tw + 0.25, 1.1, 0.25, wall, SX + tw / 2, 0, front + cd + 0.12);            // ผนังเตี้ยด้านนอก
@@ -351,6 +373,7 @@ export function buildWorld(scene) {
         solid(SX, SX + 0.3, ZA0, ZA1, Y - 0.5, 99);      // ชั้นบนสุด: ไม่มีบันไดขึ้นต่อ
       }
       if (L > 0) floorArrow(sh, 'ลง', '#ff8fab', SX - 1.3, Y, (ZB0 + ZB1) / 2);
+      }
 
       // ── ของในห้อง ──
       const chairDesk = (px, pz, col) => {
@@ -361,6 +384,9 @@ export function buildWorld(scene) {
         SC(px, pz + 0.2, 0.5);
       };
       const ceil = L < floors - 1 ? fh - 0.3 : fh; // ความสูงเพดานของชั้นนี้
+      // เพดาน: หันหน้าลงอย่างเดียว มองจากข้างบน (มุมกว้าง) จะทะลุผ่าน ไม่บังหลังคา
+      const cp = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat('#fbf8f2', { emissive: '#fff4e0', emissiveIntensity: 0.45 }));
+      cp.rotation.x = Math.PI / 2; cp.position.set(0, Y + ceil - 0.01, 0); fu.add(cp);
       const fan = (px, pz) => {
         cyl(fu, 0.03, 0.03, 0.35, '#dddddd', px, Y + ceil - 0.35, pz, 5);
         cyl(fu, 0.12, 0.12, 0.12, '#ffffff', px, Y + ceil - 0.45, pz, 8);
@@ -387,6 +413,8 @@ export function buildWorld(scene) {
           }
           continue;
         }
+        const kind = roomKind(sp.label);
+        if (furnishRoom({ kind, B, S, SC, fu, Y, cx, inA, inB, back, fr, rw, ceil, fan, accent, boardFace, label: sp.label })) continue;
         B(fu, 0.05, 0.7, 0.9, pick(posters), inA + 0.03, 1.5, back + 2);
         B(fu, 0.05, 0.7, 0.9, pick(posters), inB - 0.03, 1.5, back + 3.2);
         if (sp.label.includes('สมุด')) {
@@ -444,10 +472,12 @@ export function buildWorld(scene) {
     }
 
     // ── ผนังหอบันได เสาระเบียง (ชนได้ทุกความสูง) ──
-    solid(SX, TW, front - 0.25, front, -99, 99);
-    solid(TW, TW + 0.25, front, front + cd, -99, 99);
-    solid(SX, TW + 0.25, front + cd, front + cd + 0.25, -99, 99);
-    solid(SX, SX + RUN, front + LANE - 0.06, front + LANE + 0.06, -99, 99);
+    if (stairs) {
+      solid(SX, TW, front - 0.25, front, -99, 99);
+      solid(TW, TW + 0.25, front, front + cd, -99, 99);
+      solid(SX, TW + 0.25, front + cd, front + cd + 0.25, -99, 99);
+      solid(SX, SX + RUN, front + LANE - 0.06, front + LANE + 0.06, -99, 99);
+    }
     const nCol = Math.max(2, Math.round(w / 4.5));
     for (let i = 0; i < nCol; i++) solidC(-w / 2 + 0.25 + (i * (w - 0.5)) / nCol, front + cd - 0.21, 0.35, -99, 99);
 
@@ -462,7 +492,7 @@ export function buildWorld(scene) {
     r.castShadow = true;
     roofG.add(r);
     box(roofG, w + 1.9, 0.25, d + cd + 1.9, '#ffffff', 0, H, cd / 2);
-    box(roofG, TW - SX + 0.6, 0.3, cd + 0.8, roof, SX + (TW - SX) / 2, H, front + cd / 2); // หลังคาหอบันได
+    if (stairs) box(roofG, TW - SX + 0.6, 0.3, cd + 0.8, roof, SX + (TW - SX) / 2, H, front + cd / 2); // หลังคาหอบันได
     let labelY = H + 1.0;
     if (clock) {
       const gz = front + cd + 0.75;
@@ -502,8 +532,10 @@ export function buildWorld(scene) {
     g.updateMatrixWorld(true);
     [roofG, ...shells, ...furns].forEach(bakeStatic);
     const [cx, cz] = toWorld((TW - SX) / 2, cd / 2);
+    const corners = [[-SX - 0.5, -front - 0.5], [TW + 0.5, -front - 0.5], [-SX - 0.5, front + cd + 0.5], [TW + 0.5, front + cd + 0.5]].map(([a, b]) => toWorld(a, b));
+    const bbox = [Math.min(...corners.map((c) => c[0])), Math.max(...corners.map((c) => c[0])), Math.min(...corners.map((c) => c[1])), Math.max(...corners.map((c) => c[1]))];
     buildings.push({
-      name, floors, roof: roofG, shells, furns, cx, cz, radius: Math.hypot(w / 2 + 6, d / 2 + 4),
+      name, floors, bbox, roof: roofG, shells, furns, cx, cz, radius: Math.hypot(w / 2 + 6, d / 2 + 4),
       /** สถานะผู้เล่นในอาคาร: อยู่ชั้นไหน ต้องตัดชั้นบนออกไหม */
       probe(wx, wz, wy) {
         const [lx, lz] = toLocal(wx, wz);
@@ -550,6 +582,20 @@ export function buildWorld(scene) {
     ['ม.4/3', 'ม.5/3', 'ห้องคอมพิวเตอร์ 5', 'ม.6/3'],
   ] });
   building({ ...L.library, w: 18, d: 10, floors: 2, accent: C.accent3, roof: '#b49ae0', name: 'ห้องสมุด', open: true });
+  // ── อาคารใหม่: อำนวยการ ศิลปะ-ดนตรี โรงยิม อนุบาล สหกรณ์ ──
+  building({ ...L.admin, w: 40, d: 11, floors: 2, rotY: Math.PI, accent: '#9fb8f0', roof: '#6f8fd6', name: 'อาคารอำนวยการ', rooms: [
+    ['ห้องธุรการ', 'ห้องวิชาการ', 'ห้องพยาบาล', 'ห้องแนะแนว'],
+    ['ห้องผู้อำนวยการ', 'ห้องรองผู้อำนวยการ', 'ห้องประชุม', 'ห้องพักครู'],
+  ] });
+  building({ ...L.arts, w: 40, d: 11, floors: 2, rotY: Math.PI, accent: '#f3a0d8', roof: '#c46fb0', name: 'อาคารศิลปะ-ดนตรี', rooms: [
+    ['ห้องดนตรีไทย', 'ห้องดนตรีสากล', 'ห้องนาฏศิลป์', 'ห้องซ้อมดนตรี'],
+    ['ห้องศิลปะ 1', 'ห้องศิลปะ 2', 'ห้องปั้นดินเผา', 'ห้องจัดแสดงงานศิลป์'],
+  ] });
+  building({ ...L.gym, w: 34, d: 20, floors: 1, fh: 7, door: 4, rotY: -Math.PI / 2, wall: '#f6f1ff', accent: '#ff9e5e', roof: '#5b9fd6', name: 'โรงยิม', open: true });
+  building({ ...L.kinder, w: 36, d: 11, floors: 1, rotY: Math.PI / 2, wall: '#fffaf0', accent: '#ffcf6b', roof: '#ff8f6b', name: 'อาคารอนุบาล', rooms: [
+    ['อนุบาล 1', 'อนุบาล 2', 'อนุบาล 3', 'ห้องนอนอนุบาล'],
+  ] });
+  building({ ...L.coop, w: 14, d: 9, floors: 1, fh: 3.4, rotY: Math.PI / 2, accent: '#7fd38a', roof: '#3fae6a', name: 'สหกรณ์โรงเรียน', open: true });
 
   // ── หอประชุม ──
   {
@@ -1027,12 +1073,13 @@ export function buildWorld(scene) {
       grp.position.set(x, 0, z); grp.rotation.y = rotY; root.add(grp);
       addCircle(x, z, 0.3);
     };
-    sign(5, 44.5, 0, [['↑ อาคาร 1 · ห้องสมุด · หอประชุม', '#7c6cf0'], ['← อาคาร 2 · โรงอาหาร · สนามบาส', '#4fc3e8'], ['→ อาคาร 3 · สวนวิทยาศาสตร์', '#ff8fab']]);
+    sign(5, 44.5, 0, [['↑ อาคาร 1 · ห้องสมุด · หอประชุม', '#7c6cf0'], ['← อาคาร 2 · ศิลปะ-ดนตรี · อนุบาล', '#4fc3e8'], ['→ อาคาร 3 · อำนวยการ · โรงยิม', '#ff8fab'], ['← สหกรณ์ · สนามบาส   → สวนวิทย์', '#a6c75a']]);
     sign(-6, 90, 0, [['↑ ลานเสาธง · อาคารเรียน', '#7c6cf0'], ['← สนามฟุตบอล · ลู่วิ่ง', '#4fc3e8'], ['→ ศาลาริมน้ำ · บ่อน้ำ', '#ff8fab']]);
   }
 
   // ── พื้นที่ห้ามปลูกต้นไม้ ──
   const keepOut = [
+    ...buildings.map((b) => b.bbox),
     ...[...ROADS, ...PATHS].map((s) => [Math.min(s.x1, s.x2) - s.w / 2, Math.max(s.x1, s.x2) + s.w / 2, Math.min(s.z1, s.z2) - s.w / 2, Math.max(s.z1, s.z2) + s.w / 2]),
     [L.track.x - 32, L.track.x + 32, L.track.z - 17, L.track.z + 24],
     [L.court.x - 9, L.court.x + 9, L.court.z - 15, L.court.z + 15],
@@ -1356,3 +1403,5 @@ function bakeStatic(root) {
 
 /** หน้าร้านค้า (เดินมาใกล้ ๆ แล้วเปิดร้านได้) */
 export const SHOP_FRONT = { x: 22, z: 63.6 };
+/** จุดเปิดร้านค้าทั้งหมด (ร้านค้าหน้าโรงเรียน + เคาน์เตอร์สหกรณ์) */
+export const SHOP_SPOTS = [SHOP_FRONT, { x: -90.4, z: -28 }];

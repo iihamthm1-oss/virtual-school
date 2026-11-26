@@ -81,13 +81,15 @@ export class QuestManager {
 
     const crystalMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.55, flatShading: true, roughness: 0.3, transparent: true });
     const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.55, 0), crystalMat);
-    crystal.scale.y = 1.5;
-    crystal.position.y = 2.2;
+    // จุดในอาคารเพดานต่ำ: ลดระดับคริสตัลลงไม่ให้ทะลุเพดาน
+    const cy = quest.spot.indoor ? 1.6 : 2.2;
+    crystal.scale.y = quest.spot.indoor ? 1.25 : 1.5;
+    crystal.position.y = cy;
     crystal.castShadow = true;
     g.add(crystal);
 
     const q = makeLabel('?', { size: 1.6, bg: 'rgba(0,0,0,0)', fg: '#ffffff', weight: 700 });
-    q.position.y = 2.2;
+    q.position.y = cy;
     q.material.depthTest = false;
     q.renderOrder = 2;
     g.add(q);
@@ -104,7 +106,7 @@ export class QuestManager {
     g.add(beam);
 
     const tag = makeLabel(label, { size: 0.8, bg: color, fg: '#ffffff' });
-    tag.position.y = 3.55;
+    tag.position.y = quest.spot.indoor ? 2.55 : 3.55;
     g.add(tag);
 
     const cd = makeLabel(' ', { size: 0.9 });
@@ -113,7 +115,7 @@ export class QuestManager {
 
     g.scale.setScalar(0.01);
     this.scene.add(g);
-    return { g, crystal, crystalMat, ring, ringMat, beam, tag, cd, cdText: '', baseColor: new THREE.Color(color), phase: rand(0, 6) };
+    return { g, cy, crystal, crystalMat, ring, ringMat, beam, tag, cd, cdText: '', baseColor: new THREE.Color(color), phase: rand(0, 6) };
   }
 
   setCooldownLabel(m, text) {
@@ -122,7 +124,7 @@ export class QuestManager {
     m.g.remove(m.cd);
     m.cd.material.map.dispose();
     m.cd = makeLabel(text, { size: 0.9, bg: 'rgba(59,51,85,0.85)', fg: '#ffffff' });
-    m.cd.position.y = 4.4;
+    m.cd.position.y = m.cy + (m.cy < 2 ? 1.25 : 2.2);
     m.g.add(m.cd);
   }
 
@@ -131,6 +133,7 @@ export class QuestManager {
   nearest(pos) {
     let best = null, bd = Infinity;
     for (const a of this.active) {
+      if (pos.y > 1.6) continue; // จุดภารกิจอยู่ชั้นล่างทั้งหมด คนที่อยู่ชั้นบนตอบไม่ได้
       const d = Math.hypot(a.spot.x - pos.x, a.spot.z - pos.z);
       if (d < bd) { bd = d; best = a; }
     }
@@ -159,7 +162,7 @@ export class QuestManager {
     const geo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     for (let i = 0; i < 46; i++) {
       const p = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: pick(colors), transparent: true }));
-      p.position.set(quest.spot.x, 2.2, quest.spot.z);
+      p.position.set(quest.spot.x, m.cy, quest.spot.z);
       const a = rand(0, Math.PI * 2), s = rand(2, 6);
       this.fx.push({ m: p, v: new THREE.Vector3(Math.cos(a) * s, rand(4, 10), Math.sin(a) * s), life: 1.4, spin: rand(-8, 8) });
       this.scene.add(p);
@@ -174,7 +177,7 @@ export class QuestManager {
       m.g.scale.setScalar(m.grow * this.viewScale);
       m.beam.scale.set(1 / this.viewScale, 1, 1 / this.viewScale); // ลำแสงไม่อ้วนเกินในมุมกว้าง
       m.crystal.rotation.y += dt * 1.6;
-      m.crystal.position.y = 2.2 + Math.sin(t * 2.2 + m.phase) * 0.18;
+      m.crystal.position.y = m.cy + Math.sin(t * 2.2 + m.phase) * 0.18;
       const pulse = 1 + Math.sin(t * 3 + m.phase) * 0.08;
       m.ring.scale.set(pulse, pulse, 1);
       const left = this.cooldownLeft(a);

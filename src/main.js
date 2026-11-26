@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildWorld, QUEST_SPOTS, SPAWN, SHOP_FRONT } from './world.js';
+import { buildWorld, QUEST_SPOTS, SPAWN, SHOP_SPOTS } from './world.js';
 import { createCharacter, Controls, Player } from './player.js';
 import { QuestManager, topicInfo, NEAR_DIST } from './quests.js';
 import { openQuestion, toast, banner, sfx } from './ui.js';
@@ -558,7 +558,7 @@ function frame() {
     // ภารกิจที่อยู่ใกล้
     const nn = quests.nearest(player.pos);
     state.near = nn && nn.dist < NEAR_DIST ? nn.quest : null;
-    state.nearShop = Math.hypot(player.pos.x - SHOP_FRONT.x, player.pos.z - SHOP_FRONT.z) < 3.4 && player.pos.y < 0.5;
+    state.nearShop = player.pos.y < 0.5 && SHOP_SPOTS.some((s) => Math.hypot(player.pos.x - s.x, player.pos.z - s.z) < 3.4);
     const prompt = $('prompt');
     if (state.near && !state.modalOpen) {
       const left = quests.cooldownLeft(state.near);
@@ -662,6 +662,8 @@ function frame() {
     lookAt.lerp(eyeLook, fpK);
   }
   character.root.visible = fpK < 0.6;
+  // ในห้องกล้องอยู่ใกล้ ป้ายชื่อตัวเองจะบังวิว จึงซ่อนไว้
+  if (character.root.userData.label) character.root.userData.label.visible = roomK < 0.5;
   // ในห้องขยายมุมกล้องให้เห็นทั่วห้อง (โดยเฉพาะจอมือถือแนวตั้ง)
   const fov = 55 + roomK * (camera.aspect < 1 ? 22 : 12);
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -685,4 +687,4 @@ player.pos.set(SPAWN.x, 0, SPAWN.z);
 requestAnimationFrame(frame);
 
 // ไว้ทดสอบจากคอนโซล
-window.__vs = { fx, quality, net, quests, get player() { return player; }, controls, state };
+window.__vs = { fx, quality, net, quests, get player() { return player; }, controls, state, renderer };

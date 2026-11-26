@@ -151,3 +151,9 @@ label > input, label > select, label > textarea { width: 100%; }
   .setup { margin: 12px auto; }
   .code { font-size: 40px; }
 }
+
+/* สลับหน้านักเรียน/ครู (ลิงก์เดียวใช้ได้ทั้งคู่) */
+.role-switch { display: flex; gap: 4px; padding: 4px; margin: 0 auto 10px; width: max-content; max-width: 100%; border-radius: 999px; background: #f1ecfa; }
+.role-switch .role { padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #6b6585; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.role-switch .role.on { background: #7c6cf0; color: #fff; cursor: default; box-shadow: 0 2px 6px rgba(124,108,240,.35); }
+.role-switch a.role:hover { background: #e4dcfa; }
