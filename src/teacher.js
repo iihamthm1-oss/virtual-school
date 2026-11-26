@@ -9,6 +9,38 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const TYPE_TH = { mc: 'ปรนัย', tf: 'ถูก/ผิด', order: 'เรียงลำดับ', code: 'อ่านโค้ด' };
 const TOPIC_TH = { computing: 'วิทยาการคำนวณ', general: 'ความรู้ทั่วไป' };
 
+// หน้าต่างยืนยันในหน้าเว็บเอง แทน confirm()/alert()/prompt() ของเบราว์เซอร์
+// เพราะเบราว์เซอร์ในแอป (LINE, Facebook ฯลฯ) มักไม่แสดงหน้าต่างพวกนั้น แล้วตอบ "ยกเลิก" ให้เองทันที
+function dialog(msg, { ok = 'ตกลง', cancel = 'ยกเลิก', input = null, danger = false } = {}) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'dlg-wrap';
+    wrap.innerHTML = `<div class="dlg" role="dialog" aria-modal="true">
+      <div class="dlg-msg"></div>
+      ${input !== null ? '<input class="dlg-input" />' : ''}
+      <div class="dlg-btns">${cancel ? '<button class="btn dlg-no"></button>' : ''}<button class="btn ${danger ? 'warn' : 'primary'} dlg-yes"></button></div>
+    </div>`;
+    wrap.querySelector('.dlg-msg').textContent = msg;
+    wrap.querySelector('.dlg-yes').textContent = ok;
+    if (cancel) wrap.querySelector('.dlg-no').textContent = cancel;
+    const inp = wrap.querySelector('.dlg-input');
+    if (inp) inp.value = input;
+    const done = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const yes = () => done(inp ? inp.value.trim() : true);
+    const no = () => done(inp ? null : false);
+    const onKey = (e) => { if (e.key === 'Escape') no(); if (e.key === 'Enter') yes(); };
+    wrap.querySelector('.dlg-yes').onclick = yes;
+    if (cancel) wrap.querySelector('.dlg-no').onclick = no;
+    wrap.onclick = (e) => { if (e.target === wrap && cancel) no(); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+    (inp || wrap.querySelector('.dlg-yes')).focus();
+    inp?.select();
+  });
+}
+const ask = (msg, opts) => dialog(msg, opts);
+const tell = (msg) => dialog(msg, { cancel: null });
+
 function toast(msg) {
   const el = document.createElement('div');
   el.className = 'toast';
@@ -190,7 +222,7 @@ $('players').onclick = (e) => {
   if (!p) return;
   if (b.dataset.act === 'bonus') { room.send('bonus', { id: b.dataset.id, coins: 10 }); toast(`ให้โบนัส ${p.name} 10 เหรียญ`); }
   if (b.dataset.act === 'mute') room.send('mute', { id: b.dataset.id, on: !p.muted });
-  if (b.dataset.act === 'kick' && confirm(`นำ ${p.name} ออกจากห้อง?`)) room.send('kick', { id: b.dataset.id });
+  if (b.dataset.act === 'kick') ask(`นำ ${p.name} ออกจากห้อง?`, { ok: 'นำออก', danger: true }).then((y) => y && room?.send('kick', { id: b.dataset.id }));
 };
 
 function renderTimer() {
@@ -218,9 +250,9 @@ function renderHard() {
 $('btn-start').onclick = () => room?.send('start', { minutes: Number($('setup-minutes').value), bank: $('live-bank').value });
 // เปลี่ยนชุดคำถามระหว่างรอบ (ตอนรอเริ่ม/จบรอบ) — ตอนกำลังเล่นจะล็อกไว้
 $('live-bank').onchange = () => { if (room?.state?.phase !== 'play') { room.send('setBank', { bank: $('live-bank').value }); toast('เปลี่ยนชุดคำถามแล้ว'); } };
-$('btn-end').onclick = () => { if (confirm('จบรอบตอนนี้?')) room?.send('end'); };
+$('btn-end').onclick = async () => { if (await ask('จบรอบตอนนี้? ระบบจะบันทึกคะแนนของทุกคน', { ok: '⏹ จบรอบ', danger: true })) { room?.send('end'); toast('กำลังจบรอบ...'); } };
 $('btn-extend').onclick = () => { room?.send('extend', { minutes: 5 }); toast('เพิ่มเวลา 5 นาที'); };
-$('btn-close').onclick = () => { if (confirm('ปิดห้องนี้? นักเรียนทุกคนจะออกจากห้อง')) { room?.send('close'); setTimeout(() => { room?.leave(); resetLive(); }, 800); } };
+$('btn-close').onclick = async () => { if (await ask('ปิดห้องนี้? นักเรียนทุกคนจะออกจากห้อง', { ok: 'ปิดห้อง', danger: true })) { room?.send('close'); setTimeout(() => { room?.leave(); resetLive(); }, 800); } };
 $('btn-copy').onclick = () => { navigator.clipboard?.writeText($('room-link').value); toast('คัดลอกลิงก์แล้ว'); };
 $('btn-export-live').onclick = () => {
   const rows = [['อันดับ', 'ชื่อ', 'รหัสนักเรียน', 'ทำได้ (ข้อ)', 'ตอบผิด (ครั้ง)', 'เหรียญ']];
@@ -239,7 +271,7 @@ async function loadBanks(selectId) {
 $('bank-list').onclick = (e) => { const li = e.target.closest('li'); if (li) openBank(li.dataset.id); };
 
 async function openBank(id) {
-  if (dirty && !confirm('มีการแก้ไขที่ยังไม่ได้บันทึก ทิ้งการแก้ไขหรือไม่?')) return;
+  if (dirty && !(await ask('มีการแก้ไขที่ยังไม่ได้บันทึก ทิ้งการแก้ไขหรือไม่?', { ok: 'ทิ้งการแก้ไข', danger: true }))) return;
   editing = await api('/banks/' + id);
   dirty = false;
   document.querySelectorAll('#bank-list li').forEach((li) => li.classList.toggle('active', li.dataset.id === id));
@@ -279,7 +311,7 @@ function renderBank() {
   $('b-add').onclick = () => openQuestion(null);
   $('b-export').onclick = () => download(`${b.title}.csv`, toCSV(bankToRows(b)));
   $('b-delete').onclick = async () => {
-    if (!confirm(`ลบชุด "${b.title}" ทั้งชุด? (ย้อนกลับไม่ได้)`)) return;
+    if (!(await ask(`ลบชุด "${b.title}" ทั้งชุด? (ย้อนกลับไม่ได้)`, { ok: 'ลบทั้งชุด', danger: true }))) return;
     await api('/banks/' + b.id, { method: 'DELETE' });
     editing = null; dirty = false;
     $('bank-editor').innerHTML = '<div class="empty">ลบแล้ว</div>';
@@ -289,9 +321,9 @@ function renderBank() {
     const file = e.target.files[0];
     if (!file) return;
     const { questions, errors } = rowsToQuestions(parseCSV(await file.text()));
-    if (errors.length) alert('มีบางแถวที่นำเข้าไม่ได้:\n\n' + errors.slice(0, 15).join('\n'));
+    if (errors.length) await tell('มีบางแถวที่นำเข้าไม่ได้:\n\n' + errors.slice(0, 15).join('\n'));
     if (!questions.length) return;
-    const replace = confirm(`พบคำถาม ${questions.length} ข้อ\n\nกด "ตกลง" = แทนที่คำถามเดิมทั้งหมด\nกด "ยกเลิก" = ต่อท้ายคำถามเดิม`);
+    const replace = await ask(`พบคำถาม ${questions.length} ข้อ จะใส่แบบไหน?`, { ok: 'แทนที่ของเดิมทั้งหมด', cancel: 'ต่อท้ายของเดิม' });
     b.questions = (replace ? questions : [...b.questions, ...questions]).slice(0, 50);
     if (!replace && b.questions.length === 50) toast('ครบ 50 ข้อแล้ว ข้อที่เกินไม่ได้นำเข้า');
     markDirty(); renderBank();
@@ -299,7 +331,7 @@ function renderBank() {
   $('bank-editor').querySelector('tbody').onclick = (e) => {
     const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]');
     if (ed) openQuestion(Number(ed.dataset.edit));
-    if (del && confirm('ลบคำถามข้อนี้?')) { b.questions.splice(Number(del.dataset.del), 1); markDirty(); renderBank(); }
+    if (del) ask('ลบคำถามข้อนี้?', { ok: 'ลบ', danger: true }).then((y) => { if (y) { b.questions.splice(Number(del.dataset.del), 1); markDirty(); renderBank(); } });
   };
 }
 function markDirty() { dirty = true; $('dirty')?.classList.remove('hidden'); }
@@ -310,11 +342,11 @@ async function saveBank() {
     dirty = false;
     toast('บันทึกแล้ว');
     renderBank(); loadBanks(); loadBankOptions();
-  } catch (e) { alert(e.message); }
+  } catch (e) { tell(e.message); }
 }
 
 $('btn-new-bank').onclick = async () => {
-  const title = prompt('ชื่อชุดคำถามใหม่', 'คลังคำถามใหม่');
+  const title = await dialog('ชื่อชุดคำถามใหม่', { input: 'คลังคำถามใหม่', ok: 'สร้าง' });
   if (!title) return;
   const b = await api('/banks', { method: 'POST', body: { title, questions: [] } });
   editing = null; dirty = false;
@@ -396,7 +428,7 @@ function renderStudents() {
 $('stu-filter').onchange = renderStudents;
 $('students').onclick = async (e) => {
   const b = e.target.closest('[data-del]');
-  if (!b || !confirm('ลบนักเรียนคนนี้? เหรียญสะสมจะหายด้วย')) return;
+  if (!b || !(await ask('ลบนักเรียนคนนี้? เหรียญสะสมจะหายด้วย', { ok: 'ลบ', danger: true }))) return;
   await api('/students/' + b.dataset.del, { method: 'DELETE' });
   loadStudents();
 };

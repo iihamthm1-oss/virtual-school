@@ -244,7 +244,7 @@ class SchoolRoom extends Room {
       this.broadcast('phase', { phase: 'play' });
       console.log(`[${this.roomId}] เริ่มรอบ ${this.minutes} นาที · ${this.bankData.title} ${this.bankData.questions.length} ข้อ`);
     }));
-    this.onMessage('end', teacherOnly(() => this.endRound()));
+    this.onMessage('end', teacherOnly((c) => this.endRound(c)));
     this.onMessage('close', teacherOnly(() => {
       this.endRound();
       for (const c of this.clients) if (!this.teachers.has(c.sessionId)) c.send('closed', {});
@@ -284,14 +284,22 @@ class SchoolRoom extends Room {
       .catch((e) => console.error('บันทึกโปรไฟล์ไม่สำเร็จ', e.message));
   }
 
-  async endRound() {
-    if (this.state.phase !== 'play') return;
+  async endRound(by) {
+    if (this.state.phase !== 'play') { by?.send('notice', { msg: 'รอบนี้จบไปแล้ว' }); return; }
     this.state.phase = 'ended';
+    this.broadcast('phase', { phase: 'ended' });
     const players = [];
     this.state.players.forEach((p, id) => players.push({ id, name: p.name, solved: p.solved, wrong: p.wrong, coins: p.coins, code: this.meta.get(id)?.studentCode || null }));
     players.sort((a, b) => b.solved - a.solved || b.coins - a.coins || a.wrong - b.wrong);
     const questions = this.bankData.questions.map((q) => ({ id: q.id, q: q.q, topic: q.topic, ...(this.qstats.get(q.id) || { right: 0, wrong: 0 }) }));
-    const resultId = await store.saveResult({ code: this.roomId, bank: this.bankData.title, minutes: this.minutes, startedAt: this.startedAt, endedAt: Date.now(), players: players.map(({ id, ...r }) => r), questions });
+    // บันทึกผลพลาด (เน็ต/ฐานข้อมูล) ต้องไม่ทำให้เซิร์ฟเวอร์ล่ม — รอบยังจบได้ แค่แจ้งครู
+    let resultId = null;
+    try {
+      resultId = await store.saveResult({ code: this.roomId, bank: this.bankData.title, minutes: this.minutes, startedAt: this.startedAt, endedAt: Date.now(), players: players.map(({ id, ...r }) => r), questions });
+    } catch (e) {
+      console.error(`[${this.roomId}] บันทึกผลรอบไม่สำเร็จ`, e.message);
+      for (const c of this.clients) if (this.teachers.has(c.sessionId)) c.send('notice', { msg: '⚠️ จบรอบแล้ว แต่บันทึกผลลงฐานข้อมูลไม่สำเร็จ กดส่งออก Excel เก็บคะแนนไว้ก่อน' });
+    }
     // เหรียญสะสมข้ามรอบสำหรับคนที่มีรหัสนักเรียน
     await store.updateStudents(players.filter((p) => p.code).map((p) => ({ code: p.code, solved: p.solved }))).catch((e) => console.error('บันทึกสถิตินักเรียนไม่สำเร็จ', e.message));
     this.state.players.forEach((p, id) => this.saveProfile(id));
@@ -319,6 +327,9 @@ class SchoolRoom extends Room {
     p.name = name;
     p.x = 0; p.y = 0; p.z = 1040;
     p.ry = 0; p.spd = 0; p.air = false; p.veh = 0; // ค่าเริ่มต้นครบทุกช่อง (ช่องว่าง = NaN ฝั่งเกม)
+    // คะแนนรอบนี้ต้องเริ่มที่ 0 เสมอ (คนที่เข้าห้องหลังครูกดเริ่มรอบ ไม่งั้นเป็น undefined → ตอบผิดแล้วกลายเป็น NaN
+    // ส่งสถานะห้องไม่ได้ทั้งห้อง หน้าครูค้าง กดจบรอบไม่ได้)
+    p.solved = 0; p.wrong = 0; p.coins = 0; p.muted = false;
     // ของที่มี: นักเรียนมีรหัส = ของที่ซื้อไว้ · แขก = ของฟรีอย่างเดียว (ซื้อได้ แต่หายเมื่อออก)
     const owned = [...new Set([...FREE_ITEMS, ...(stu?.owned || [])])];
     Object.assign(p, cleanLook(stu?.equip || options?.look, owned));
