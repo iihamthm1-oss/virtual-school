@@ -404,6 +404,18 @@ net.on('status', (s) => {
 
 // ── แผงภารกิจ ──
 $('quest-toggle').onclick = () => $('quest-panel').classList.toggle('collapsed');
+
+// กันแผงภารกิจทับแถบบน: จอแนวนอนของมือถือกว้างพอเข้ากฎจอคอม แต่แถบบนยาวจนชนแผง
+// ถ้าชนกันจริง ให้แผงเลื่อนลงมาอยู่ใต้แถบบน (เช็กใหม่ทุกวินาที เพราะความยาวแถบบนเปลี่ยนตามรหัสห้อง/เวลา)
+function fitQuestPanel() {
+  const qp = $('quest-panel');
+  if (qp.classList.contains('hidden')) return;
+  qp.style.top = '';
+  const h = $('hud').getBoundingClientRect(), q = qp.getBoundingClientRect();
+  if (h.width && h.left < q.right + 6 && h.bottom > q.top) qp.style.top = `${Math.ceil(h.bottom + 8)}px`;
+}
+addEventListener('resize', fitQuestPanel);
+setInterval(fitQuestPanel, 1000);
 const tracked = () => quests.active.find((a) => a.q.id === state.trackedId) || quests.nearest(player.pos)?.quest;
 
 function renderQuestList() {
