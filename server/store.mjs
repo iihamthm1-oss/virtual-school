@@ -39,6 +39,12 @@ async function setConfig(v) {
 }
 
 /** สร้างรหัสครูครั้งแรก (ใช้ TEACHER_PIN ถ้าตั้งไว้) คืนรหัสที่สร้างใหม่ หรือ null ถ้ามีอยู่แล้ว */
+/** แตะฐานข้อมูลเบา ๆ ให้ Supabase รู้ว่ายังมีคนใช้ (โปรเจกต์ฟรีจะหยุดเองถ้าไม่มีการใช้งาน ~7 วัน) */
+export async function ping() {
+  if (sb) must(await sb.from('vs_config').select('key').limit(1));
+  return backend;
+}
+
 export async function ensureTeacherPin(initial) {
   const cfg = await getConfig();
   if (cfg.pinHash) return null;

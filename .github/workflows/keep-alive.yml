@@ -1,0 +1,23 @@
+# ปลุกเซิร์ฟเวอร์และฐานข้อมูลทุก 3 วัน กัน Supabase หยุดโปรเจกต์เองช่วงปิดเทอม
+# ถ้าเช็กไม่ผ่าน GitHub จะส่งอีเมลแจ้งเจ้าของ repo อัตโนมัติ (แปลว่าต้องเข้าไปกด Restore project ใน Supabase)
+name: keep-alive
+on:
+  schedule:
+    - cron: '0 1 */3 * *'   # ทุก 3 วัน 08:00 เวลาไทย
+  workflow_dispatch: {}       # กดรันเองได้จากแท็บ Actions
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: ปลุกเซิร์ฟเวอร์ แล้วแตะฐานข้อมูล
+        run: |
+          URL=https://virtual-school-server-fr6l.onrender.com/api/ping
+          for i in $(seq 1 12); do
+            body=$(curl -s -m 30 "$URL" || true)
+            echo "ครั้งที่ $i: $body"
+            case "$body" in *'"db":"supabase"'*) echo "ฐานข้อมูลยังทำงานปกติ"; exit 0;; esac
+            sleep 15
+          done
+          echo "::error::เซิร์ฟเวอร์หรือฐานข้อมูลไม่ตอบ — เข้า supabase.com แล้วกด Restore project"
+          exit 1

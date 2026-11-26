@@ -37,6 +37,8 @@ export function mountApi(app) {
 
   // ไว้ปลุกเซิร์ฟเวอร์ฟรีที่หลับอยู่ และเช็กว่ายังทำงาน
   app.get('/api/health', (req, res) => res.json({ ok: true, backend: store.backend }));
+  // ใช้กับตัวเช็กอัตโนมัติใน GitHub (ทุก 3 วัน) กันฐานข้อมูลหลับช่วงปิดเทอม
+  app.get('/api/ping', wrap(async (req, res) => res.json({ ok: true, db: await store.ping() })));
 
   app.post('/api/login', wrap(async (req, res) => {
     const ip = req.ip, f = loginFail.get(ip);
